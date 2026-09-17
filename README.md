@@ -56,8 +56,8 @@ node dist/cli/index.js accounts add helper-1 --role helper --username <second-us
 # 3. Verify authentication works
 node dist/cli/index.js accounts test
 
-# 4. Record how far you already are (optional but recommended)
-node dist/cli/index.js progress pull-shark 1 --source manual --note "I already see the default badge"
+# 4. Record how far you already are (optional but recommended: 0=none, 1=default, 2=bronze, 3=silver, 4=gold)
+node dist/cli/index.js progress pull-shark 1
 
 # 5. Plan and preview
 node dist/cli/index.js plan --target quickdraw=1
@@ -120,6 +120,10 @@ Authentication methods:
 | `--resume [runId]` | resume a pending run (latest resumable if no id) |
 | `--status` | show the latest run instead of executing |
 
+`run` without `--target` reuses the targets from your last `gh-forge plan`, so
+`plan` → `run` executes exactly what you previewed. An explicit `--target` on
+`run` always wins; targets are stored in `~/.gh-forge/state/last-plan.json`.
+
 ### `gh-forge status`
 
 Shows past runs. `--run <runId>` and `--json` give more detail. Interrupted
@@ -130,10 +134,17 @@ runs can be continued with `gh-forge run --resume`.
 - `achievements list` — the whole catalogue with policy risk per achievement.
 - `achievements show <id>` — details, requirements, tiers, and *provenance*
   (where the requirement comes from and when it was verified).
+- `progress` (no arguments) — shows the full reference table: every achievement
+  (id + name) with your recorded level (`0` = none). Run this first to learn
+  the ids.
 - `progress <id> [level]` — record how far you already are so the planner
-  doesn't repeat earned levels (`--source manual|scraped|observed`).
+  doesn't repeat earned levels. **The level is the badge tier** (`0` = none,
+  `1` = default, `2` = bronze, `3` = silver, `4` = gold);
+  `progress pull-shark 1` means "I already have the default Pull Shark badge".
+  Setting `0` is the same as not having recorded anything (it clears the
+  entry).
 - `config get/set <key>` — fine-tune defaults
-  (e.g. `execution.minIntervalMs`, `execution.maxActionsPerRun`).
+  (e.g. `execution.minIntervalMs`, `execution.branchPrefix`).
 
 ## Policy safety
 

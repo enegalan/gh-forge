@@ -6,8 +6,6 @@ import { createAchievementRegistry } from "../../achievements/achievement-regist
 import type { ProgressEntry } from "../../config/schema.js";
 
 export interface ProgressCommandOptions {
-  source?: "manual" | "scraped" | "observed";
-  note?: string;
   clear?: boolean;
   json?: boolean;
 }
@@ -32,19 +30,31 @@ export async function progressCommand(
 
   if (achievementId === undefined) {
     const file = await store.load();
-    const entries = Object.entries(file.entries).sort(([a], [b]) => a.localeCompare(b));
     if (options.json === true) {
       printJson(file.entries);
       return 0;
     }
-    if (entries.length === 0) {
-      printLine("No known progress yet. Set levels with `gh-forge progress <id> <level>`.");
+    const achievements = createAchievementRegistry()
+      .all()
+      .sort((a, b) => a.id.localeCompare(b.id));
+    if (achievements.length === 0) {
+      printLine("No achievements in the catalogue.");
       return 0;
     }
-    section("Known progress");
-    for (const [id, entry] of entries) {
-      printLine(`  ${id}: level ${entry.level} (${entry.source}${entry.updatedAt === undefined ? "" : `, ${entry.updatedAt}`})`);
+    const idWidth = Math.max(...achievements.map((achievement) => achievement.id.length));
+    const nameWidth = Math.max(...achievements.map((achievement) => achievement.name.length));
+    section("Achievement progress");
+    printLine(`  ${"id".padEnd(idWidth)}  ${"name".padEnd(nameWidth)}  level`);
+    printLine(`  ${"-".repeat(idWidth)}  ${"-".repeat(nameWidth)}  -----`);
+    for (const achievement of achievements) {
+      const entry: ProgressEntry | undefined = file.entries[achievement.id];
+      printLine(
+        `  ${achievement.id.padEnd(idWidth)}  ${achievement.name.padEnd(nameWidth)}  ${entry === undefined || entry.level === 0 ? "0" : String(entry.level)}`,
+      );
     }
+    printLine();
+    printLine("level: badge tier you already earned (0=none, 1=default, 2=bronze, 3=silver, 4=gold).");
+    printLine("Record an earned tier with `gh-forge progress <id> <level>`.");
     return 0;
   }
 
@@ -59,7 +69,7 @@ export async function progressCommand(
     if (options.json === true) {
       printJson(entry);
     } else {
-      printLine(`${achievementId}: level ${entry.level} (${entry.source}${entry.updatedAt === undefined ? "" : `, ${entry.updatedAt}`})`);
+      printLine(`${achievementId}: level ${entry.level}${entry.updatedAt === undefined ? "" : ` (${entry.updatedAt})`}`);
     }
     return 0;
   }
@@ -69,13 +79,20 @@ export async function progressCommand(
     throw new UsageError(`Level must be an integer between 0 and 4, received "${level}"`);
   }
 
-  await store.setLevel(achievementId, parsedLevel, {
-    source: options.source ?? "manual",
-    ...(options.note === undefined ? {} : { note: options.note }),
-  });
+  if (parsedLevel === 0) {
+    await store.clear(achievementId);
+    if (options.json === true) {
+      printJson({ achievementId, level: 0 });
+    } else {
+      printLine(`Cleared ${achievementId} progress (level 0 = not earned yet).`);
+    }
+    return 0;
+  }
+
+  await store.setLevel(achievementId, parsedLevel);
 
   if (options.json === true) {
-    printJson({ achievementId, level: parsedLevel, source: options.source ?? "manual" });
+    printJson({ achievementId, level: parsedLevel });
   } else {
     printLine(`Set ${achievementId} progress to level ${parsedLevel}.`);
   }

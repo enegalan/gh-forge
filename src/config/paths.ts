@@ -9,6 +9,7 @@ export interface GafPaths {
   runsDir: string;
   cacheDir: string;
   auditLog: string;
+  planFile: string;
 }
 
 export const DEFAULT_HOME_DIRNAME = ".gh-forge";
@@ -28,5 +29,6 @@ export function resolvePaths(home: string = resolveHomeDir()): GafPaths {
     runsDir: join(home, "state", "runs"),
     cacheDir: join(home, "cache"),
     auditLog: join(home, "state", "audit.log"),
+    planFile: join(home, "state", "last-plan.json"),
   };
 }

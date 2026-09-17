@@ -38,8 +38,6 @@ function makeExecutor(overrides: { sleep?: (ms: number) => Promise<void> } = {})
       }),
     },
     minIntervalMs: 0,
-    maxActionsPerRun: 100,
-    maxActionsPerHour: 1000,
     sleep: overrides.sleep ?? (() => Promise.resolve()),
     now: () => 1_000_000,
   });
@@ -197,68 +195,6 @@ describe("Executor", () => {
     expect(calls.putFile).toBe(0);
     expect(calls.createBranch).toBe(0);
     expect(calls.star).toBe(0);
-  });
-
-  it("hits maxActionsPerRun and leaves the rest pending", async () => {
-    const { client } = makeStubGitHub();
-    const executor = new Executor({
-      runStore,
-      maxActionsPerRun: 1,
-      maxActionsPerHour: 1000,
-      minIntervalMs: 0,
-      sleep: () => Promise.resolve(),
-      now: () => 1_000_000,
-      logger: {
-        debug: () => {},
-        info: () => {},
-        warn: () => {},
-        error: () => {},
-        child: () => null as never,
-      },
-    });
-    const context = makeContext({ accounts: [makeAccount()], github: client });
-    const actions = [
-      {
-        key: "a1",
-        kind: "close-issue-fast" as const,
-        achievementIds: ["quickdraw"],
-        description: "a1",
-        requiredAccounts: [],
-        params: {},
-        policyRisk: "safe" as const,
-      },
-      {
-        key: "a2",
-        kind: "close-issue-fast" as const,
-        achievementIds: ["quickdraw"],
-        description: "a2",
-        requiredAccounts: [],
-        params: {},
-        policyRisk: "safe" as const,
-      },
-      {
-        key: "a3",
-        kind: "close-issue-fast" as const,
-        achievementIds: ["quickdraw"],
-        description: "a3",
-        requiredAccounts: [],
-        params: {},
-        policyRisk: "safe" as const,
-      },
-    ];
-    const run = executor.prepareRun({
-      context,
-      targets: { quickdraw: 1 },
-      actions,
-      dryRun: false,
-      flags: { allowOptIn: true, allowHighRisk: true, yes: false },
-    });
-    const executed = await executor.executeRun(context, run);
-    const done = executed.actions.filter((action) => action.status === "done").length;
-    const pending = executed.actions.filter((action) => action.status === "pending").length;
-    expect(done).toBe(1);
-    expect(pending).toBe(2);
-    expect(executed.status).toBe("partial");
   });
 
   it("persists the run after every action", async () => {

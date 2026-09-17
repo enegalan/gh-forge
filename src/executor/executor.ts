@@ -14,8 +14,6 @@ export interface ExecutorOptions {
   logger?: Logger;
   mergeMethod?: "merge" | "squash" | "rebase";
   branchPrefix?: string;
-  maxActionsPerRun?: number;
-  maxActionsPerHour?: number;
   minIntervalMs?: number;
   maxAttempts?: number;
   sleep?: (ms: number) => Promise<void>;
@@ -43,8 +41,6 @@ export class Executor implements AchievementExecutor {
   private readonly logger: Logger;
   private readonly mergeMethod: "merge" | "squash" | "rebase";
   private readonly branchPrefix: string;
-  private readonly maxActionsPerRun: number;
-  private readonly maxActionsPerHour: number;
   private readonly minIntervalMs: number;
   private readonly maxAttempts: number;
   private readonly sleep: (ms: number) => Promise<void>;
@@ -56,8 +52,6 @@ export class Executor implements AchievementExecutor {
     this.logger = options.logger ?? createLogger();
     this.mergeMethod = options.mergeMethod ?? "merge";
     this.branchPrefix = options.branchPrefix ?? "gh-forge";
-    this.maxActionsPerRun = options.maxActionsPerRun ?? 50;
-    this.maxActionsPerHour = options.maxActionsPerHour ?? 200;
     this.minIntervalMs = options.minIntervalMs ?? 1_500;
     this.maxAttempts = options.maxAttempts ?? 2;
     this.sleep = options.sleep ?? ((ms) => new Promise((resolve) => setTimeout(resolve, ms)));
@@ -105,28 +99,15 @@ export class Executor implements AchievementExecutor {
     }
 
     let executedThisRun = 0;
-    const startedAt = this.now();
     let lastActionAt = 0;
 
     for (const action of run.actions) {
-      if (executedThisRun >= this.maxActionsPerRun) {
-        this.logger.warn(
-          `Reached maxActionsPerRun (${this.maxActionsPerRun}); remaining actions stay pending and can be resumed with \`gh-forge run\`.`,
-        );
-        break;
-      }
       if (action.status === "done" || action.status === "skipped") continue;
       if (action.attempts >= this.maxAttempts) {
         action.status = "failed";
         action.error = action.error ?? "Maximum attempts reached";
         await this.persist(run);
         continue;
-      }
-      if (this.overHourlyBudget(run, startedAt)) {
-        this.logger.warn(
-          `Reached maxActionsPerHour (${this.maxActionsPerHour}); stopping to stay well below GitHub's rate limits. Resume later with \`gh-forge run\`.`,
-        );
-        break;
       }
 
       if (lastActionAt !== 0 && this.minIntervalMs > 0) {
@@ -208,17 +189,6 @@ export class Executor implements AchievementExecutor {
 
     await this.persist(run);
     this.onAction?.(action);
-  }
-
-  private overHourlyBudget(run: RunState, referenceTime: number): boolean {
-    const cutoff = referenceTime - 60 * 60 * 1000;
-    const recent = run.actions.filter(
-      (action) =>
-        action.status === "done" &&
-        action.finishedAt !== undefined &&
-        Date.parse(action.finishedAt) >= cutoff,
-    ).length;
-    return recent >= this.maxActionsPerHour;
   }
 
   private async persist(run: RunState): Promise<RunState> {

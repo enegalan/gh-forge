@@ -22,5 +22,6 @@ describe("resolvePaths", () => {
     expect(paths.runsDir).toBe(join("/x", "state", "runs"));
     expect(paths.cacheDir).toBe(join("/x", "cache"));
     expect(paths.auditLog).toBe(join("/x", "state", "audit.log"));
+    expect(paths.planFile).toBe(join("/x", "state", "last-plan.json"));
   });
 });

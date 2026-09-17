@@ -6,6 +6,7 @@ import { printLine, printJson, section, bullet, table } from "../ui/format.js";
 import { riskLabel } from "../../domain/policy.js";
 import { levelToTierName } from "../../achievements/achievement.js";
 import { loggerFor } from "../context.js";
+import { saveLastPlanTargets } from "../../state/last-plan.js";
 
 export interface PlanCommandOptions {
   only?: string[];
@@ -30,6 +31,16 @@ export async function planCommand(paths: GafPaths, options: PlanCommandOptions):
   if (options.only !== undefined && options.only.length > 0) {
     validateAchievementIds(options.only, runtime.registry);
   }
+
+  // Remember the targets this plan used, so `gh-forge run` (without --target)
+  // executes exactly what the user just previewed.
+  const effectiveTargets: Record<string, number> = { ...targets };
+  if (options.only !== undefined && options.only.length > 0) {
+    for (const id of Object.keys(effectiveTargets)) {
+      if (!options.only.includes(id)) delete effectiveTargets[id];
+    }
+  }
+  await saveLastPlanTargets(paths, effectiveTargets);
 
   const context = await buildAchievementContext(runtime, readOnlyExecutor());
   const plan = await createPlan({
@@ -81,11 +92,13 @@ export async function planCommand(paths: GafPaths, options: PlanCommandOptions):
   }
 
   if (plan.actions.length > 0) {
-    section("Actions");
+    const maxDetailRows = 10;
+    section(`Actions (${plan.actions.length})`);
+    const shown = plan.actions.slice(0, maxDetailRows);
     printLine(
       table(
         ["#", "achievement", "kind", "risk", "description"],
-        plan.actions.map((action, index) => [
+        shown.map((action, index) => [
           String(index + 1),
           action.achievementIds.join("+"),
           action.kind,
@@ -94,6 +107,9 @@ export async function planCommand(paths: GafPaths, options: PlanCommandOptions):
         ]),
       ),
     );
+    if (plan.actions.length > shown.length) {
+      printLine(`  … and ${plan.actions.length - shown.length} more (use --json for the full list).`);
+    }
     printLine();
     printLine("Action breakdown:");
     for (const [kind, count] of Object.entries(plan.summary.actionsByKind)) {

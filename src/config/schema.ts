@@ -56,8 +56,6 @@ export const policySchema = z.object({
 
 export const executionSchema = z.object({
   minIntervalMs: z.number().int().min(0).max(60_000).default(1_500),
-  maxActionsPerRun: z.number().int().min(1).max(5_000).default(50),
-  maxActionsPerHour: z.number().int().min(1).max(5_000).default(200),
   mergeMethod: z.enum(["merge", "squash", "rebase"]).default("merge"),
   branchPrefix: z.string().min(1).default("gh-forge"),
 });

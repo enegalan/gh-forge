@@ -19,7 +19,7 @@ src/
   planner/       turns target levels + observations into a plan
   profile/       reads the live GitHub profile page for AMVP data
   runtime/       wires config, CLI, accounts, executor together
-  state/         per-run state machine, run store, audit log
+  state/         per-run state machine, run store, audit log, last-plan targets
   utils/         hashing, redaction, atomic fs writes
 tests/           vitest suite (168 tests, all offline via stub GitHub)
 ```

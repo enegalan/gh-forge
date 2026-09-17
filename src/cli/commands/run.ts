@@ -9,6 +9,7 @@ import { printLine, section, bullet, confirm } from "../ui/format.js";
 import { policyNoteBanner } from "../ui/policy-banner.js";
 import { recordAudit } from "../../state/audit-log.js";
 import { READ_ONLY_RISK_MESSAGE, markRiskAccepted } from "../../domain/consent.js";
+import { loadLastPlanTargets } from "../../state/last-plan.js";
 
 export interface RunCommandOptions {
   dryRun?: boolean;
@@ -40,7 +41,7 @@ export async function runCommand(paths: GafPaths, options: RunCommandOptions): P
 
   const targets = options.target !== undefined && options.target.length > 0
     ? parseTargets(options.target)
-    : defaultTargets(config);
+    : (await loadLastPlanTargets(paths)) ?? defaultTargets(config);
 
   if (options.only !== undefined && options.only.length > 0) {
     validateAchievementIds(options.only, runtime.registry);
@@ -51,8 +52,6 @@ export async function runCommand(paths: GafPaths, options: RunCommandOptions): P
     logger,
     mergeMethod: config.execution.mergeMethod,
     branchPrefix: config.execution.branchPrefix,
-    maxActionsPerRun: config.execution.maxActionsPerRun,
-    maxActionsPerHour: config.execution.maxActionsPerHour,
     minIntervalMs: config.execution.minIntervalMs,
   });
 
@@ -138,8 +137,12 @@ export async function runCommand(paths: GafPaths, options: RunCommandOptions): P
     section("Dry run (no actions are executed)");
     printLine(`Run ${dryRun.runId}`);
     printLine(`Actions: ${dryRun.actions.length}`);
-    for (const action of dryRun.actions) {
+    const maxDryRunRows = 10;
+    for (const action of dryRun.actions.slice(0, maxDryRunRows)) {
       printLine(`  - ${action.kind} ${action.key} ${action.description}`);
+    }
+    if (dryRun.actions.length > maxDryRunRows) {
+      printLine(`  … and ${dryRun.actions.length - maxDryRunRows} more.`);
     }
     printLine();
     printLine("Run `gh-forge run` to execute these actions.");

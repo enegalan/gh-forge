@@ -327,16 +327,12 @@ program
   .description("Set or view known achievement progress levels.")
   .argument("[achievementId]", "achievement to view or set")
   .argument("[level]", "new level (0-4) to set")
-  .option("--source <source>", "progress source: manual, scraped, observed", "manual")
-  .option("--note <text>", "optional note about the progress entry")
   .option("--clear", "remove the progress entry for this achievement")
   .option("--json", "output as JSON")
   .action(async (achievementId, level, opts) => {
     try {
       const paths = pathsFor(globalOptions());
       const code = await progressCommand(paths, achievementId as string | undefined, level as string | undefined, {
-        source: opts.source as "manual" | "scraped" | "observed" | undefined,
-        note: opts.note as string | undefined,
         clear: opts.clear as boolean | undefined,
         json: opts.json as boolean | undefined,
       });
