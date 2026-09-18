@@ -1,7 +1,8 @@
 import type { AchievementContext } from "../achievements/achievement.js";
 import type { ActionIdempotencyRef, PlannedAction } from "../domain/action.js";
 import type { Logger } from "../utils/logger.js";
-import { ExecutionError } from "../utils/errors.js";
+import { ExecutionError, errorMessage } from "../utils/errors.js";
+import { GitHubHttpError } from "../github/http/http-errors.js";
 
 export interface RepositoryTarget {
   owner: string;
@@ -153,6 +154,119 @@ function buildCommitMessage(input: ActionRunInput, coAuthored: boolean, marker: 
   return lines.join("\n");
 }
 
+const DEFAULT_MERGE_POLL_INTERVAL_MS = 2_000;
+const DEFAULT_MERGE_MAX_ATTEMPTS = 15;
+
+function defaultSleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+function isNotMergeableError(error: unknown): boolean {
+  return (
+    error instanceof GitHubHttpError &&
+    (error.status === 405 || error.status === 409) &&
+    /not mergeable/i.test(error.message)
+  );
+}
+
+interface MergeTarget {
+  owner: string;
+  repo: string;
+  branch: string;
+  marker: string;
+  pullNumber: number;
+  coAuthored: boolean;
+}
+
+/**
+ * GitHub computes a pull request's mergeability lazily, so a PR that was just
+ * created (or whose base branch just moved) can report `mergeable: null` and
+ * reject the merge with `405: Pull Request is not mergeable`. Poll the PR until
+ * GitHub reports it as mergeable and retry transient merge failures, instead of
+ * failing the action on the first attempt.
+ */
+async function mergePullRequest(input: ActionRunInput, target: MergeTarget): Promise<ActionOutcome> {
+  const { context, action } = input;
+  const interval = input.mergePollIntervalMs ?? DEFAULT_MERGE_POLL_INTERVAL_MS;
+  const maxAttempts = Math.max(1, input.mergeMaxAttempts ?? DEFAULT_MERGE_MAX_ATTEMPTS);
+  const sleep = input.sleep ?? defaultSleep;
+  const ref: ActionIdempotencyRef = {
+    type: "pull-request",
+    marker: target.marker,
+    repository: `${target.owner}/${target.repo}`,
+    branch: target.branch,
+    number: target.pullNumber,
+  };
+  let lastError = "Pull Request is not mergeable";
+
+  for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
+    const current = await context.github.pullRequests.get(target.owner, target.repo, target.pullNumber);
+    if (current === null) {
+      return {
+        status: "failed",
+        message: `Pull request #${target.pullNumber} disappeared before it could be merged.`,
+        ref,
+      };
+    }
+    if (current.merged) {
+      return {
+        status: "skipped",
+        message: `Pull request #${target.pullNumber} for ${action.key} is already merged.`,
+        ref,
+      };
+    }
+    if (current.mergeable === false) {
+      return {
+        status: "failed",
+        message:
+          `Pull request #${target.pullNumber} has conflicts and cannot be merged ` +
+          `(mergeable_state: ${current.mergeable_state ?? "unknown"}).`,
+        ref,
+      };
+    }
+    if (current.mergeable === true) {
+      try {
+        const merge = await context.github.pullRequests.merge({
+          owner: target.owner,
+          repo: target.repo,
+          pullNumber: target.pullNumber,
+          mergeMethod: input.mergeMethod,
+        });
+        if (merge.merged) {
+          return {
+            status: "done",
+            message: `Merged pull request #${target.pullNumber}${target.coAuthored ? " with a co-authored commit" : " without review"}.`,
+            ref,
+            result: {
+              pullNumber: target.pullNumber,
+              pullUrl: current.html_url,
+              mergeSha: merge.sha,
+              coAuthored: target.coAuthored,
+            },
+          };
+        }
+        lastError = merge.message;
+      } catch (error) {
+        if (!isNotMergeableError(error)) throw error;
+        lastError = errorMessage(error);
+      }
+    }
+    if (attempt < maxAttempts) {
+      input.logger.warn(
+        `pull request #${target.pullNumber} is not mergeable yet; retrying in ${interval}ms ` +
+          `(attempt ${attempt}/${maxAttempts})`,
+      );
+      await sleep(interval);
+    }
+  }
+
+  return {
+    status: "failed",
+    message: `Merging pull request #${target.pullNumber} failed after ${maxAttempts} attempts: ${lastError}`,
+    ref,
+  };
+}
+
 async function runMergedPullRequest(input: ActionRunInput): Promise<ActionOutcome> {
   const { context, action } = input;
   const marker = markerFor(action.key);
@@ -232,26 +346,14 @@ async function runMergedPullRequest(input: ActionRunInput): Promise<ActionOutcom
     };
   }
 
-  const merge = await context.github.pullRequests.merge({
+  return mergePullRequest(input, {
     owner,
     repo,
+    branch,
+    marker,
     pullNumber: pull.number,
-    mergeMethod: input.mergeMethod,
+    coAuthored,
   });
-  if (!merge.merged) {
-    return {
-      status: "failed",
-      message: `Merging pull request #${pull.number} failed: ${merge.message}`,
-      ref: { type: "pull-request", marker, repository: `${owner}/${repo}`, branch, number: pull.number },
-    };
-  }
-
-  return {
-    status: "done",
-    message: `Merged pull request #${pull.number}${coAuthored ? " with a co-authored commit" : " without review"}.`,
-    ref: { type: "pull-request", marker, repository: `${owner}/${repo}`, branch, number: pull.number },
-    result: { pullNumber: pull.number, pullUrl: pull.html_url, mergeSha: merge.sha, coAuthored },
-  };
 }
 
 function pickDiscussionCategory(

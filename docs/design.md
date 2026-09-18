@@ -83,6 +83,23 @@ transient 405s before failing the action.
 a fresh attempt budget (`Executor.prepareRun`), so a transient failure can always
 be retried without editing the run file by hand.
 
+## Time estimates
+
+Execution time is dominated by the per-account HTTP throttle
+(`execution.minIntervalMs`, applied start-to-start), not by GitHub's latency: as
+long as one request is faster than the interval, an action that issues N requests
+takes about `N * minIntervalMs`. `src/executor/estimate.ts` encodes the request
+count per action kind, and both commands print an ETA:
+
+- `gh-forge plan` — `Estimated execution time: ~4h 6m (896 actions, …)`.
+- `gh-forge run` / `run --resume` — `Estimated time for the remaining N actions`.
+
+The counts describe the "fresh" path, so an estimate is a slight upper bound:
+actions that short-circuit on an existing marker are much cheaper. Calibration: a
+real 896-action run (all merged PRs, default 1500 ms) measured p50 15.85 s per
+action and the estimator says 16.5 s. Backoff after a rate limit is the only
+genuinely unpredictable part.
+
 ## Non-negotiable limits
 
 `src/executor/executor.ts` enforces hard caps: max actions per run,

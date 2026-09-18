@@ -7,6 +7,7 @@ import { riskLabel } from "../../domain/policy.js";
 import { levelToTierName } from "../../achievements/achievement.js";
 import { loggerFor } from "../context.js";
 import { saveLastPlanTargets } from "../../state/last-plan.js";
+import { estimateActions, formatDuration } from "../../executor/estimate.js";
 
 export interface PlanCommandOptions {
   only?: string[];
@@ -54,8 +55,10 @@ export async function planCommand(paths: GafPaths, options: PlanCommandOptions):
     },
   });
 
+  const estimate = estimateActions(plan.actions, runtime.config.execution.minIntervalMs);
+
   if (options.json === true) {
-    printJson(plan);
+    printJson({ ...plan, estimate });
     return 0;
   }
 
@@ -113,6 +116,11 @@ export async function planCommand(paths: GafPaths, options: PlanCommandOptions):
       if (count === undefined) continue;
       printLine(`  ${count}× ${describeActionKind(kind as Parameters<typeof describeActionKind>[0])}`);
     }
+    printLine();
+    printLine(
+      `Estimated execution time: ~${formatDuration(estimate.seconds)} ` +
+        `(${estimate.actionCount} actions, execution.minIntervalMs = ${runtime.config.execution.minIntervalMs}).`,
+    );
   }
 
   if (plan.blockers.length > 0) {

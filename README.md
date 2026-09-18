@@ -106,7 +106,9 @@ Authentication methods:
 | `--only <id...>` | plan only specific achievements |
 | `--json` | machine-readable output |
 
-`plan` is read-only — it never touches GitHub.
+`plan` is read-only — it never touches GitHub. It also prints an estimated
+execution time, derived from the request count per action kind and
+`execution.minIntervalMs` (see `docs/design.md`).
 
 ### `gh-forge run`
 
@@ -123,6 +125,10 @@ Authentication methods:
 `run` without `--target` reuses the targets from your last `gh-forge plan`, so
 `plan` → `run` executes exactly what you previewed. An explicit `--target` on
 `run` always wins; targets are stored in `~/.gh-forge/state/last-plan.json`.
+
+Before executing, `run` prints an ETA for the actions it is about to perform.
+That is especially useful after `--resume`: completed actions are skipped, so the
+estimate covers only what is left.
 
 ### `gh-forge status`
 

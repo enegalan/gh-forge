@@ -10,6 +10,7 @@ import { policyNoteBanner } from "../ui/policy-banner.js";
 import { recordAudit } from "../../state/audit-log.js";
 import { READ_ONLY_RISK_MESSAGE, markRiskAccepted } from "../../domain/consent.js";
 import { loadLastPlanTargets } from "../../state/last-plan.js";
+import { estimateActions, formatDuration } from "../../executor/estimate.js";
 
 export interface RunCommandOptions {
   dryRun?: boolean;
@@ -165,6 +166,17 @@ export async function runCommand(paths: GafPaths, options: RunCommandOptions): P
     const done = run.actions.filter((action) => action.status === "done").length;
     const pending = run.actions.filter((action) => action.status === "pending").length;
     printLine(`Resuming ${done} completed actions; ${pending} remain.`);
+  }
+
+  const remainingActions = run.actions.filter(
+    (action) => action.status === "pending" || action.status === "in_flight",
+  );
+  if (remainingActions.length > 0) {
+    const estimate = estimateActions(remainingActions, config.execution.minIntervalMs);
+    printLine(
+      `Estimated time for the remaining ${estimate.actionCount} ` +
+        `action${estimate.actionCount === 1 ? "" : "s"}: ~${formatDuration(estimate.seconds)}.`,
+    );
   }
 
   await executor.executeRun(context, run);
