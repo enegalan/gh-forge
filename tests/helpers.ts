@@ -5,6 +5,7 @@ import type {
 } from "../src/github/services/discussions.js";
 import type { IssueService } from "../src/github/services/issues.js";
 import type { PullRequestService } from "../src/github/services/pull-requests.js";
+import { GitHubHttpError } from "../src/github/http/http-errors.js";
 import type { RepositoryService } from "../src/github/services/repositories.js";
 import type { StarService } from "../src/github/services/stars.js";
 import type { UserService } from "../src/github/services/users.js";
@@ -69,6 +70,8 @@ export interface StubOptions {
   existingDiscussions?: GitHubDiscussion[];
   discussionInfo?: RepositoryDiscussionInfo;
   hasStarredResult?: boolean;
+  pullMergeableSequence?: Array<boolean | null>;
+  mergeFailures?: number;
   trackCalls?: boolean;
 }
 
@@ -161,6 +164,8 @@ export function makeStubGitHub(options: StubOptions = {}): { client: GitHubClien
   } as unknown as IssueService;
 
   let lastCreatedPull: GitHubPullRequest | null = null;
+  let pullGetCount = 0;
+  let mergeAttempts = 0;
   const pullRequestService = {
     create: async () => {
       calls.prCreate += 1;
@@ -176,14 +181,34 @@ export function makeStubGitHub(options: StubOptions = {}): { client: GitHubClien
         draft: false,
         head: { ref: "gh-forge/pull-shark/abc", sha: "sha", repo: { full_name: "octocat/gh-forge-sandbox" } },
         base: { ref: "main" },
+        mergeable: true,
       };
       lastCreatedPull = created;
       return created;
     },
-    get: async () => options.existingPull ?? lastCreatedPull ?? null,
+    get: async () => {
+      const base = options.existingPull ?? lastCreatedPull ?? null;
+      if (base === null) return null;
+      const sequence = options.pullMergeableSequence;
+      const mergeable =
+        sequence === undefined
+          ? (base.mergeable ?? true)
+          : (sequence[Math.min(pullGetCount, sequence.length - 1)] ?? null);
+      pullGetCount += 1;
+      return { ...base, mergeable };
+    },
     findByHead: async () => options.existingPull ?? lastCreatedPull ?? null,
     merge: async () => {
       calls.prMerge += 1;
+      mergeAttempts += 1;
+      if (mergeAttempts <= (options.mergeFailures ?? 0)) {
+        throw new GitHubHttpError({
+          status: 405,
+          method: "PUT",
+          url: "/repos/octocat/gh-forge-sandbox/pulls/10/merge",
+          message: "Pull Request is not mergeable",
+        });
+      }
       return {
         merged: options.existingPull?.merged ?? true,
         message: "Pull Request successfully merged",

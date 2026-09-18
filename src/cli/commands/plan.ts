@@ -1,6 +1,6 @@
 import type { GafPaths } from "../../config/paths.js";
 import { loadRuntime, buildAchievementContext, readOnlyExecutor, describeAuthErrors } from "../../runtime/context.js";
-import { createPlan, describeActionKind, describeProvenance } from "../../planner/planner.js";
+import { createPlan, describeActionKind } from "../../planner/planner.js";
 import { parseTargets, defaultTargets, validateAchievementIds } from "../targets.js";
 import { printLine, printJson, section, bullet, table } from "../ui/format.js";
 import { riskLabel } from "../../domain/policy.js";
@@ -86,9 +86,6 @@ export async function planCommand(paths: GafPaths, options: PlanCommandOptions):
     }
     for (const issue of entry.validation.issues) printLine(`  ✗ ${issue}`);
     for (const note of entry.validation.warnings) printLine(`  ! ${note}`);
-    if (entry.provenance.url !== undefined) {
-      printLine(`  Provenance: ${describeProvenance(entry.provenance)}`);
-    }
   }
 
   if (plan.actions.length > 0) {

@@ -1,7 +1,6 @@
 import { createAchievementRegistry } from "../../achievements/achievement-registry.js";
 import { ACHIEVEMENT_CATALOG } from "../../achievements/catalog.js";
 import { riskLabel, POLICY_NOTES } from "../../domain/policy.js";
-import { describeProvenance } from "../../planner/planner.js";
 import { printLine, printJson, section, table } from "../ui/format.js";
 import { UsageError } from "../../utils/errors.js";
 
@@ -19,7 +18,6 @@ export async function achievementsListCommand(asJson: boolean): Promise<number> 
           requirement: tier.requirement,
           accountsRequired: tier.accountsRequired,
         })),
-        provenance: entry.provenance,
       })),
     );
     return 0;
@@ -63,7 +61,6 @@ export async function achievementsShowCommand(id: string, asJson: boolean): Prom
       policyRisk: achievement.policyRisk,
       policyNote: POLICY_NOTES[achievement.policyRisk as keyof typeof POLICY_NOTES] ?? null,
       tiers: achievement.getTiers(),
-      provenance: achievement.provenance,
       notes: entry?.notes ?? [],
     });
     return 0;
@@ -74,7 +71,6 @@ export async function achievementsShowCommand(id: string, asJson: boolean): Prom
   printLine(`  Description: ${achievement.description}`);
   printLine(`  Automatable: ${achievement.automatable ? "yes" : "no"}`);
   printLine(`  Policy risk: ${riskLabel(achievement.policyRisk)}`);
-  printLine(`  Provenance:  ${describeProvenance(achievement.provenance)}`);
 
   const tiers = achievement.getTiers();
   if (tiers.length > 0) {

@@ -179,6 +179,45 @@ describe("runAction - pull requests", () => {
     expect(stub.calls.prCreate).toBe(0);
     expect(stub.calls.prMerge).toBe(0);
   });
+
+  const fastMerge = {
+    mergePollIntervalMs: 1,
+    mergeMaxAttempts: 5,
+    sleep: () => Promise.resolve(),
+  };
+
+  it("waits for GitHub's lazily computed mergeability before merging", async () => {
+    const stub = makeStubGitHub({ pullMergeableSequence: [null, null, true] });
+    const input = makeInput(stub, mergedPRAction(), fastMerge);
+    const outcome = await runAction(input);
+    expect(outcome.status).toBe("done");
+    expect(stub.calls.prMerge).toBe(1);
+  });
+
+  it("retries a transient 405 not-mergeable failure", async () => {
+    const stub = makeStubGitHub({ mergeFailures: 1 });
+    const input = makeInput(stub, mergedPRAction(), fastMerge);
+    const outcome = await runAction(input);
+    expect(outcome.status).toBe("done");
+    expect(stub.calls.prMerge).toBe(2);
+  });
+
+  it("fails without merging when the PR has real conflicts", async () => {
+    const stub = makeStubGitHub({ pullMergeableSequence: [false] });
+    const input = makeInput(stub, mergedPRAction(), fastMerge);
+    const outcome = await runAction(input);
+    expect(outcome.status).toBe("failed");
+    expect(outcome.message).toContain("conflicts");
+    expect(stub.calls.prMerge).toBe(0);
+  });
+
+  it("gives up after the configured number of mergeability polls", async () => {
+    const stub = makeStubGitHub({ pullMergeableSequence: [null] });
+    const input = makeInput(stub, mergedPRAction(), { ...fastMerge, mergeMaxAttempts: 3 });
+    const outcome = await runAction(input);
+    expect(outcome.status).toBe("failed");
+    expect(stub.calls.prMerge).toBe(0);
+  });
 });
 
 describe("runAction - co-authored merged PR", () => {

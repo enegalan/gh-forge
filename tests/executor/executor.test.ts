@@ -112,6 +112,48 @@ describe("Executor", () => {
     expect(run.actions[0]?.attempts).toBe(1);
   });
 
+  it("gives failed actions a fresh attempt budget when resuming", () => {
+    const { client } = makeStubGitHub();
+    const executor = makeExecutor();
+    const context = makeContext({ accounts: [makeAccount()], github: client });
+    const prev = makeRunState({
+      actions: [
+        {
+          key: "abc",
+          kind: "close-issue-fast",
+          achievementIds: ["quickdraw"],
+          description: "open and close an issue",
+          requiredAccountIds: [],
+          policyRisk: "safe",
+          status: "failed",
+          attempts: 2,
+          params: {},
+          error: "PUT /merge -> 405: Pull Request is not mergeable",
+        },
+      ],
+    });
+    const action = {
+      key: "abc",
+      kind: "close-issue-fast" as const,
+      achievementIds: ["quickdraw"],
+      description: "open and close an issue",
+      requiredAccounts: [],
+      params: {},
+      policyRisk: "safe" as const,
+    };
+    const run = executor.prepareRun({
+      context,
+      targets: { quickdraw: 1 },
+      actions: [action],
+      dryRun: false,
+      flags: { allowOptIn: true, allowHighRisk: true, yes: false },
+      existingRun: prev,
+    });
+    expect(run.actions[0]?.status).toBe("pending");
+    expect(run.actions[0]?.attempts).toBe(0);
+    expect(run.actions[0]?.error).toBeUndefined();
+  });
+
   it("executes safe actions via the real action runner", async () => {
     const { client, calls } = makeStubGitHub();
     const executor = makeExecutor();

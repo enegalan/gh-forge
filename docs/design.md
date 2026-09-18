@@ -21,7 +21,7 @@ src/
   runtime/       wires config, CLI, accounts, executor together
   state/         per-run state machine, run store, audit log, last-plan targets
   utils/         hashing, redaction, atomic fs writes
-tests/           vitest suite (168 tests, all offline via stub GitHub)
+tests/           vitest suite
 ```
 
 ## Dependency policy
@@ -73,6 +73,15 @@ Re-running a plan must not duplicate work. Each action:
 3. Skips with a `done`-style "already present" result when a marker exists.
 
 This makes `run`, `resume`, and repeated `plan`+`run` safe.
+
+GitHub computes a pull request's mergeability lazily, so a freshly created PR can
+reject `PUT /pulls/{n}/merge` with `405: Pull Request is not mergeable`. The
+merged-PR action polls the PR until GitHub reports it as mergeable and retries
+transient 405s before failing the action.
+
+`gh-forge run --resume` re-queues actions that failed in the previous attempt with
+a fresh attempt budget (`Executor.prepareRun`), so a transient failure can always
+be retried without editing the run file by hand.
 
 ## Non-negotiable limits
 

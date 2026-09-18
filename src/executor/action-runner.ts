@@ -17,6 +17,9 @@ export interface ActionRunInput {
   dryRun: boolean;
   mergeMethod: "merge" | "squash" | "rebase";
   branchPrefix: string;
+  mergePollIntervalMs?: number;
+  mergeMaxAttempts?: number;
+  sleep?: (ms: number) => Promise<void>;
 }
 
 export interface ActionOutcome {
@@ -149,6 +152,7 @@ function buildCommitMessage(input: ActionRunInput, coAuthored: boolean, marker: 
   lines.push("", markerHtml(marker));
   return lines.join("\n");
 }
+
 async function runMergedPullRequest(input: ActionRunInput): Promise<ActionOutcome> {
   const { context, action } = input;
   const marker = markerFor(action.key);

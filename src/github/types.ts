@@ -66,6 +66,8 @@ export interface GitHubPullRequest {
   head: { ref: string; sha: string; repo: { full_name: string } | null };
   base: { ref: string };
   user?: { login: string } | null;
+  mergeable?: boolean | null;
+  mergeable_state?: string;
 }
 
 export interface GitHubBranchProtection {

@@ -7,13 +7,6 @@ and actions" and that the feature is in public preview. The numbers here are
 data with explicit provenance — nothing marked `unknown` is ever planned or
 executed.
 
-Canonical source: <https://github.com/drknzz/GitHub-Achievements>
-(community-maintained, ~3.1k stars). Values were cross-checked on
-**2026-09-16** against live badge assets GitHub serves (tier names are encoded
-in the PNGs), public profiles (`?tab=achievements` exposes
-`data-achievement-slug` and the tier label), and the 2026 changelog note that
-"Profiles now show your highest achievement badge tier".
-
 The machine-readable version of this table is the single source of truth for
 planner, executor, and CLI: `src/achievements/catalog.ts`. If GitHub changes a
 threshold, edit only that file. `CATALOG_VERIFIED_AT = "2026-09-16"`.

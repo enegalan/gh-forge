@@ -16,6 +16,8 @@ export interface ExecutorOptions {
   branchPrefix?: string;
   minIntervalMs?: number;
   maxAttempts?: number;
+  mergePollIntervalMs?: number;
+  mergeMaxAttempts?: number;
   sleep?: (ms: number) => Promise<void>;
   now?: () => number;
   /** Called after every action so the CLI can stream progress. */
@@ -43,6 +45,8 @@ export class Executor implements AchievementExecutor {
   private readonly branchPrefix: string;
   private readonly minIntervalMs: number;
   private readonly maxAttempts: number;
+  private readonly mergePollIntervalMs: number | undefined;
+  private readonly mergeMaxAttempts: number | undefined;
   private readonly sleep: (ms: number) => Promise<void>;
   private readonly now: () => number;
   private readonly onAction: ((action: ActionState) => void) | null;
@@ -54,6 +58,8 @@ export class Executor implements AchievementExecutor {
     this.branchPrefix = options.branchPrefix ?? "gh-forge";
     this.minIntervalMs = options.minIntervalMs ?? 1_500;
     this.maxAttempts = options.maxAttempts ?? 2;
+    this.mergePollIntervalMs = options.mergePollIntervalMs;
+    this.mergeMaxAttempts = options.mergeMaxAttempts;
     this.sleep = options.sleep ?? ((ms) => new Promise((resolve) => setTimeout(resolve, ms)));
     this.now = options.now ?? (() => Date.now());
     this.onAction = options.onAction ?? null;
@@ -159,6 +165,11 @@ export class Executor implements AchievementExecutor {
         dryRun: run.dryRun,
         mergeMethod: this.mergeMethod,
         branchPrefix: this.branchPrefix,
+        sleep: this.sleep,
+        ...(this.mergePollIntervalMs === undefined
+          ? {}
+          : { mergePollIntervalMs: this.mergePollIntervalMs }),
+        ...(this.mergeMaxAttempts === undefined ? {} : { mergeMaxAttempts: this.mergeMaxAttempts }),
       });
       action.finishedAt = new Date().toISOString();
       switch (outcome.status) {
@@ -210,15 +221,20 @@ function mergeActionState(action: PlannedAction, previous: ActionState | undefin
     params: action.params,
   };
   if (previous === undefined) return base;
+  // A run that is resumed gets a fresh attempt budget for the actions that failed
+  // earlier, and they are queued again. Without this, `gh-forge run --resume`
+  // would silently do nothing once an action reached `maxAttempts`, even though
+  // the CLI tells the user the remaining actions can be retried.
+  const retrying = previous.status === "failed";
   return {
     ...base,
     // An action interrupted mid-flight becomes pending again so it can be
     // retried; the action runner checks GitHub before mutating anything.
-    status: previous.status === "in_flight" ? "pending" : previous.status,
-    attempts: previous.attempts,
+    status: previous.status === "in_flight" || retrying ? "pending" : previous.status,
+    attempts: retrying ? 0 : previous.attempts,
     ...(previous.ref === undefined ? {} : { ref: previous.ref }),
     ...(previous.result === undefined ? {} : { result: previous.result }),
-    ...(previous.error === undefined ? {} : { error: previous.error }),
+    ...(retrying || previous.error === undefined ? {} : { error: previous.error }),
     ...(previous.startedAt === undefined ? {} : { startedAt: previous.startedAt }),
     ...(previous.finishedAt === undefined ? {} : { finishedAt: previous.finishedAt }),
   };

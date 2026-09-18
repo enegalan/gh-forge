@@ -8,7 +8,6 @@ import type {
   AchievementTier,
   ExecutionResult,
   Requirement,
-  RequirementProvenance,
   ValidationResult,
 } from "./achievement.js";
 import { levelToTierName } from "./achievement.js";
@@ -28,7 +27,6 @@ export abstract class BaseAchievement implements Achievement {
   readonly name: string;
   readonly description: string;
   readonly policyRisk: CatalogEntry["policyRisk"];
-  readonly provenance: RequirementProvenance;
   readonly automatable: boolean;
   protected readonly tiers: AchievementTier[];
   protected readonly notes: string[];
@@ -38,7 +36,6 @@ export abstract class BaseAchievement implements Achievement {
     this.name = entry.name;
     this.description = entry.description;
     this.policyRisk = entry.policyRisk;
-    this.provenance = entry.provenance;
     this.automatable = entry.automatable;
     this.tiers = entry.tiers;
     this.notes = entry.notes;

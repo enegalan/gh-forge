@@ -15,16 +15,6 @@ describe("catalog", () => {
     expect(catalogIds().length).toBe(11);
   });
 
-  it("each entry has provenance with a verified date", () => {
-    for (const entry of ACHIEVEMENT_CATALOG) {
-      expect(entry.provenance.verifiedAt).toBeDefined();
-      expect(entry.provenance.confidence).toBeDefined();
-      if (entry.provenance.confidence === "unknown") {
-        expect(entry.automatable).toBe(false);
-      }
-    }
-  });
-
   it("each entry carries a policy risk", () => {
     for (const entry of ACHIEVEMENT_CATALOG) {
       expect(["safe", "opt-in", "high-risk"]).toContain(entry.policyRisk);

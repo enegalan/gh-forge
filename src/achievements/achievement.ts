@@ -25,18 +25,6 @@ export interface AchievementTier {
   accountsRequired: number;
 }
 
-/**
- * Where the numbers come from. GitHub does not publish achievement
- * requirements, so every value must be traceable and dated.
- */
-export interface RequirementProvenance {
-  source: "official" | "community" | "observed";
-  url?: string;
-  verifiedAt: string;
-  confidence: "high" | "medium" | "low" | "unknown";
-  notes?: string;
-}
-
 export interface Requirement {
   id: string;
   kind: ActionKind;
@@ -105,7 +93,6 @@ export interface Achievement {
   name: string;
   description: string;
   policyRisk: PolicyRisk;
-  provenance: RequirementProvenance;
   /** false for retired or unknown-requirement achievements (e.g. Heart On Your Sleeve). */
   automatable: boolean;
 

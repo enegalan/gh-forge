@@ -1,7 +1,6 @@
 import type {
   AchievementContext,
   Requirement,
-  RequirementProvenance,
   ValidationResult,
 } from "../achievements/achievement.js";
 import { BaseAchievement } from "../achievements/base-achievement.js";
@@ -25,7 +24,6 @@ export interface AchievementPlan {
   helpersRequired: number;
   policyRisk: PolicyRisk;
   automatable: boolean;
-  provenance: RequirementProvenance;
   requirements: Requirement[];
   validation: ValidationResult;
 }
@@ -187,7 +185,6 @@ function buildEntry(
     helpersRequired: accountSummary.helpersRequired,
     policyRisk: achievement.policyRisk,
     automatable: achievement.automatable,
-    provenance: achievement.provenance,
     requirements,
     validation,
   };
@@ -237,11 +234,6 @@ function summarizePlan(input: {
 
 export function describeActionKind(kind: PlannedAction["kind"]): string {
   return ACTION_KIND_LABELS[kind];
-}
-
-export function describeProvenance(provenance: RequirementProvenance): string {
-  const confidence = provenance.confidence === "unknown" ? "UNVERIFIED" : provenance.confidence;
-  return `${provenance.source} (${confidence}, verified ${provenance.verifiedAt})${provenance.url === undefined ? "" : ` ${provenance.url}`}`;
 }
 
 function dedupe(values: string[]): string[] {
