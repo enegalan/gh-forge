@@ -163,7 +163,6 @@ export async function buildAchievementContext(
     sandbox: runtime.sandbox,
     logger: runtime.logger,
     policyGates: {
-      allowOptIn: runtime.config.policy.allowOptIn,
       allowHighRisk: runtime.config.policy.allowHighRisk,
     },
     executor,

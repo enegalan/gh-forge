@@ -10,7 +10,6 @@ interface PlanOptions {
   targets?: Record<string, number>;
   only?: string[];
   config?: ReturnType<typeof createDefaultConfig>;
-  allowOptIn?: boolean;
   allowHighRisk?: boolean;
   knownProgress?: Record<string, number>;
   accounts?: ReturnType<typeof makeAccount>[];
@@ -22,7 +21,6 @@ async function planFor(options: PlanOptions = {}) {
     accounts: options.accounts ?? [makeAccount()],
     config,
     knownProgress: options.knownProgress,
-    allowOptIn: options.allowOptIn ?? true,
     allowHighRisk: options.allowHighRisk ?? true,
   });
   return createPlan({
@@ -30,7 +28,7 @@ async function planFor(options: PlanOptions = {}) {
     context: ctx,
     targets: options.targets ?? {},
     ...(options.only === undefined ? {} : { only: options.only }),
-    policyGates: { allowOptIn: ctx.policyGates.allowOptIn, allowHighRisk: ctx.policyGates.allowHighRisk },
+    policyGates: { allowHighRisk: ctx.policyGates.allowHighRisk },
   });
 }
 
@@ -100,8 +98,8 @@ describe("createPlan", () => {
     expect(plan.summary.missingHelpers).toBeGreaterThan(0);
   });
 
-  it("blocks galaxy-brain when opt-in consent is missing", async () => {
-    const plan = await planFor({ targets: { "galaxy-brain": 1 }, allowOptIn: false });
+  it("blocks galaxy-brain when high-risk consent is missing", async () => {
+    const plan = await planFor({ targets: { "galaxy-brain": 1 }, allowHighRisk: false });
     expect(plan.readyToExecute).toBe(false);
   });
 

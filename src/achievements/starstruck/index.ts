@@ -10,7 +10,7 @@ import { requireCatalogEntry } from "../catalog.js";
  * still missing. The main account cannot star its own repository, so planets
  * must come from helper accounts.
  *
- * Policy: classified `high-risk`. GitHub's Acceptable Use Policies §4 list
+ * Policy: classified `high-risk`. GitHub's Acceptable Use Policies list
  * "rank abuse, such as automated starring or following" as prohibited activity.
  * GAF requires `--allow-high-risk`, prints a warning and records the consent in
  * the audit log; it never creates accounts, never uses third-party accounts and
@@ -68,7 +68,7 @@ export class StarstruckAchievement extends BaseAchievement {
         );
       }
       base.warnings.push(
-        "POLICY: automated starring is listed as 'rank abuse' in GitHub's Acceptable Use Policies §4. You accept this risk by using --allow-high-risk.",
+        "POLICY: automated starring is listed as 'rank abuse' in GitHub's Acceptable Use Policies. You accept this risk by using --allow-high-risk.",
       );
       if (!context.policyGates.allowHighRisk) {
         base.issues.push("Starstruck requires the explicit consent flag --allow-high-risk.");

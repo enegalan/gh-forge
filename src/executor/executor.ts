@@ -141,9 +141,7 @@ export class Executor implements AchievementExecutor {
       actions,
       dryRun: false,
       flags: {
-        allowOptIn: context.policyGates.allowOptIn,
         allowHighRisk: context.policyGates.allowHighRisk,
-        yes: false,
       },
     });
     const executed = await this.executeRun(context, run);

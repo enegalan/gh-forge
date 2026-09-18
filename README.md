@@ -160,7 +160,7 @@ Every action is tagged with a risk level:
 |---|---|---|
 | `safe` | normal activity on repositories/PRs you own | none |
 | `opt-in` | multi-account coordination (Galaxy Brain) | `--allow-policy-risks` |
-| `high-risk` | automated starring (Starstruck) — flagged in GitHub's AUP §4 | `--allow-policy-risks` **and** `--allow-high-risk` |
+| `high-risk` | automated starring (Starstruck) — flagged in GitHub's AUP | `--allow-policy-risks` **and** `--allow-high-risk` |
 
 `--yes` skips interactive prompts but is **never** a consent flag. Actions
 missing consent are marked `skipped`, never executed. Every opt-in/high-risk

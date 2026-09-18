@@ -16,11 +16,9 @@ export interface RunCommandOptions {
   dryRun?: boolean;
   only?: string[];
   target?: string[];
-  allowPolicyRisks?: boolean;
   allowHighRisk?: boolean;
   resume?: string | boolean;
   status?: boolean;
-  yes?: boolean;
   verbose?: boolean;
   quiet?: boolean;
 }
@@ -35,9 +33,7 @@ export async function runCommand(paths: GafPaths, options: RunCommandOptions): P
 
   const config = runtime.config;
   const flags = {
-    allowOptIn: options.allowPolicyRisks === true || config.policy.allowOptIn,
     allowHighRisk: options.allowHighRisk === true || config.policy.allowHighRisk,
-    yes: options.yes === true || config.policy.allowOptIn || config.policy.allowHighRisk,
   };
 
   const targets = options.target !== undefined && options.target.length > 0
@@ -63,7 +59,7 @@ export async function runCommand(paths: GafPaths, options: RunCommandOptions): P
     context,
     targets,
     ...(options.only === undefined ? {} : { only: options.only }),
-    policyGates: { allowOptIn: flags.allowOptIn, allowHighRisk: flags.allowHighRisk },
+    policyGates: { allowHighRisk: flags.allowHighRisk },
   });
 
   if (plan.actions.length === 0) {
@@ -86,8 +82,7 @@ export async function runCommand(paths: GafPaths, options: RunCommandOptions): P
     }
     printLine();
     printLine("To consent, re-run with:");
-    printLine("  --allow-policy-risks   opt-in achievements (Galaxy Brain)");
-    printLine("  --allow-high-risk       high-risk achievements (Starstruck)");
+    printLine("  --allow-high-risk   high-risk achievements (Galaxy Brain, Starstruck)");
     return 1;
   }
 
@@ -96,22 +91,20 @@ export async function runCommand(paths: GafPaths, options: RunCommandOptions): P
     section("Risk consent");
     for (const line of bullet(banner.lines)) printLine(line);
     printLine();
-    printLine(`Flags used: ${flags.allowHighRisk ? "--allow-high-risk " : ""}${flags.allowOptIn ? "--allow-policy-risks " : ""}${flags.yes ? "--yes " : ""}`.trimEnd());
+    printLine(`Flags used: ${flags.allowHighRisk ? "--allow-high-risk" : ""}`.trimEnd());
 
-    if (flags.yes !== true) {
-      printLine();
-      const ok = await confirm("Continue with these risk actions?");
-      if (!ok) {
-        printLine("Aborted. No actions were executed.");
-        await recordAudit(paths, {
-          at: new Date().toISOString(),
-          kind: "consent-declined",
-          achievementIds: plan.actions.map((action) => action.achievementIds).flat(),
-          policyRisk: risk,
-          flags: [],
-        });
-        return 1;
-      }
+    printLine();
+    const ok = await confirm("Continue with these risk actions?");
+    if (!ok) {
+      printLine("Aborted. No actions were executed.");
+      await recordAudit(paths, {
+        at: new Date().toISOString(),
+        kind: "consent-declined",
+        achievementIds: plan.actions.map((action) => action.achievementIds).flat(),
+        policyRisk: risk,
+        flags: [],
+      });
+      return 1;
     }
 
     await recordAudit(paths, {
@@ -120,9 +113,7 @@ export async function runCommand(paths: GafPaths, options: RunCommandOptions): P
       achievementIds: plan.actions.map((action) => action.achievementIds).flat(),
       policyRisk: risk,
       flags: [
-        ...(flags.allowOptIn ? ["--allow-policy-risks"] : []),
         ...(flags.allowHighRisk ? ["--allow-high-risk"] : []),
-        ...(flags.yes ? ["--yes"] : []),
       ],
     });
   }
@@ -239,8 +230,7 @@ async function resolvePreviousRun(
   return runStore.latestResumable();
 }
 
-function maxRiskOf(risks: Array<"safe" | "opt-in" | "high-risk">): "safe" | "opt-in" | "high-risk" {
+function maxRiskOf(risks: Array<"safe" | "high-risk">): "safe" | "high-risk" {
   if (risks.includes("high-risk")) return "high-risk";
-  if (risks.includes("opt-in")) return "opt-in";
   return "safe";
 }

@@ -21,28 +21,23 @@ afterEach(async () => {
 
 describe("markRiskAccepted", () => {
   it("accepts safe risk with no gates", () => {
-    expect(markRiskAccepted("safe", { allowOptIn: false, allowHighRisk: false })).toBe(true);
-  });
-
-  it("rejects opt-in without consent", () => {
-    expect(markRiskAccepted("opt-in", { allowOptIn: false, allowHighRisk: false })).toBe(false);
-    expect(markRiskAccepted("opt-in", { allowOptIn: true, allowHighRisk: false })).toBe(true);
+    expect(markRiskAccepted("safe", { allowHighRisk: false })).toBe(true);
   });
 
   it("rejects high-risk without the explicit flag", () => {
-    expect(markRiskAccepted("high-risk", { allowOptIn: true, allowHighRisk: false })).toBe(false);
-    expect(markRiskAccepted("high-risk", { allowOptIn: true, allowHighRisk: true })).toBe(true);
+    expect(markRiskAccepted("high-risk", { allowHighRisk: false })).toBe(false);
+    expect(markRiskAccepted("high-risk", { allowHighRisk: true })).toBe(true);
   });
 
-  it("mentions both flags in the message", () => {
+  it("mentions the flag in the message", () => {
     expect(READ_ONLY_RISK_MESSAGE.length).toBeGreaterThan(0);
   });
 });
 
 describe("riskAllowed integration", () => {
   it("is the same source of truth the executor uses", () => {
-    expect(riskAllowed("high-risk", { allowOptIn: true, allowHighRisk: false })).toBe(false);
-    expect(riskAllowed("high-risk", { allowOptIn: true, allowHighRisk: true })).toBe(true);
+    expect(riskAllowed("high-risk", { allowHighRisk: false })).toBe(false);
+    expect(riskAllowed("high-risk", { allowHighRisk: true })).toBe(true);
   });
 });
 
@@ -52,15 +47,15 @@ describe("recordAudit", () => {
       at: "2026-09-16T00:00:00Z",
       kind: "consent-granted",
       achievementIds: ["galaxy-brain"],
-      policyRisk: "opt-in",
-      flags: ["--allow-policy-risks"],
+      policyRisk: "high-risk",
+      flags: ["--allow-high-risk"],
     });
     await recordAudit(paths, {
       at: "2026-09-16T00:00:01Z",
       kind: "consent-granted",
       achievementIds: ["starstruck"],
       policyRisk: "high-risk",
-      flags: ["--allow-policy-risks", "--allow-high-risk"],
+      flags: ["--allow-high-risk"],
     });
     const raw = await readFile(paths.auditLog, "utf8");
     const lines = raw.trim().split("\n");

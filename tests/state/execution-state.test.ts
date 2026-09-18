@@ -16,7 +16,7 @@ function runWithActions(actions: Array<{ status: string }>): RunState {
     status: "in_progress",
     dryRun: false,
     targets: {},
-    flags: { allowOptIn: false, allowHighRisk: false, yes: false },
+    flags: { allowHighRisk: false },
     accounts: {},
     actions: actions.map((action, index) => ({
       key: `k${index}`,
@@ -40,7 +40,7 @@ describe("createRunState", () => {
       targets: { "pull-shark": 2 },
       accounts: { main: "octocat" },
       dryRun: false,
-      flags: { allowOptIn: false, allowHighRisk: false, yes: false },
+      flags: { allowHighRisk: false },
     });
     expect(run.version).toBe(1);
     expect(run.status).toBe("in_progress");

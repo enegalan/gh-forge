@@ -38,7 +38,7 @@ export async function achievementsListCommand(asJson: boolean): Promise<number> 
   );
   printLine();
   printLine("`automatable = yes` means GAF can plan and execute concrete GitHub actions for it.");
-  printLine("`opt-in` and `high-risk` require explicit consent flags at execution time. See docs/SECURITY.md.");
+  printLine("`high-risk` requires the explicit consent flag --allow-high-risk at execution time. See docs/SECURITY.md.");
   return 0;
 }
 

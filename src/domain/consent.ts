@@ -11,7 +11,7 @@ export const READ_ONLY_RISK_MESSAGE =
  */
 export function markRiskAccepted(
   maxRisk: PolicyRisk,
-  gates: Pick<PolicyGates, "allowOptIn" | "allowHighRisk">,
+  gates: PolicyGates,
 ): boolean {
-  return riskAllowed(maxRisk, { allowOptIn: gates.allowOptIn, allowHighRisk: gates.allowHighRisk });
+  return riskAllowed(maxRisk, gates);
 }

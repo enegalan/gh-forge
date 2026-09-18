@@ -65,7 +65,7 @@ describe("Executor", () => {
       targets: { quickdraw: 1 },
       actions: [action],
       dryRun: false,
-      flags: { allowOptIn: true, allowHighRisk: true, yes: false },
+      flags: { allowHighRisk: true },
     });
     expect(run.actions).toHaveLength(1);
     expect(run.actions[0]?.key).toBe("abc");
@@ -105,7 +105,7 @@ describe("Executor", () => {
       targets: { quickdraw: 1 },
       actions: [action],
       dryRun: false,
-      flags: { allowOptIn: true, allowHighRisk: true, yes: false },
+      flags: { allowHighRisk: true },
       existingRun: prev,
     });
     expect(run.actions[0]?.status).toBe("done");
@@ -146,7 +146,7 @@ describe("Executor", () => {
       targets: { quickdraw: 1 },
       actions: [action],
       dryRun: false,
-      flags: { allowOptIn: true, allowHighRisk: true, yes: false },
+      flags: { allowHighRisk: true },
       existingRun: prev,
     });
     expect(run.actions[0]?.status).toBe("pending");
@@ -172,7 +172,7 @@ describe("Executor", () => {
       targets: { quickdraw: 1 },
       actions: [action],
       dryRun: false,
-      flags: { allowOptIn: true, allowHighRisk: true, yes: false },
+      flags: { allowHighRisk: true },
     });
     const executed = await executor.executeRun(context, run);
     expect(executed.actions[0]?.status).toBe("done");
@@ -201,7 +201,7 @@ describe("Executor", () => {
       targets: { starstruck: 1 },
       actions: [action],
       dryRun: false,
-      flags: { allowOptIn: true, allowHighRisk: false, yes: false },
+      flags: { allowHighRisk: false },
     });
     const executed = await executor.executeRun(context, run);
     expect(executed.actions[0]?.status).toBe("skipped");
@@ -226,7 +226,7 @@ describe("Executor", () => {
       targets: { quickdraw: 1 },
       actions: [action],
       dryRun: true,
-      flags: { allowOptIn: true, allowHighRisk: true, yes: false },
+      flags: { allowHighRisk: true },
     });
     const executed = await executor.executeRun(context, run);
     expect(executed.actions[0]?.status).toBe("pending");
@@ -257,7 +257,7 @@ describe("Executor", () => {
       targets: { quickdraw: 1 },
       actions: [action],
       dryRun: false,
-      flags: { allowOptIn: true, allowHighRisk: true, yes: false },
+      flags: { allowHighRisk: true },
     });
     await executor.executeRun(context, run);
     const stored = await runStore.load(run.runId);

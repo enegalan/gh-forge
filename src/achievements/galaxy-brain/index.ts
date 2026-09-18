@@ -12,8 +12,8 @@ import { requireCatalogEntry } from "../catalog.js";
  *
  * `accountsRequired` is 2 for every tier: the same pair repeats the flow.
  *
- * Policy: classified as `opt-in` because it is coordinated activity between two
- * accounts. See docs/SECURITY.md (Acceptable Use Policies §4).
+ * Policy: classified as `high-risk` because it is coordinated activity between
+ * two accounts. See docs/SECURITY.md (Acceptable Use Policies).
  */
 export class GalaxyBrainAchievement extends BaseAchievement {
   constructor() {
@@ -34,7 +34,7 @@ export class GalaxyBrainAchievement extends BaseAchievement {
           { role: "helper", index: 0, purpose: "create the discussion and accept the answer" },
           { role: "main", index: 0, purpose: "post the answer that gets accepted" },
         ],
-        policyRisk: "opt-in",
+        policyRisk: "high-risk",
         params: {},
         description: "create a discussion, answer it and accept the answer",
       },

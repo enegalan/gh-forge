@@ -50,7 +50,6 @@ export const sandboxRepositorySchema = z.object({
 });
 
 export const policySchema = z.object({
-  allowOptIn: z.boolean().default(false),
   allowHighRisk: z.boolean().default(false),
 });
 

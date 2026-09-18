@@ -100,7 +100,7 @@ const OPT_IN_ENTRIES: CatalogEntry[] = [
     name: "Galaxy Brain",
     description: "Answered a discussion and had the answer accepted.",
     automatable: true,
-    policyRisk: "opt-in",
+    policyRisk: "high-risk",
     tiers: tiersFromThresholds([2, 8, 16, 32], () => 2),
     notes: [
       "One account creates the discussion, the main account answers, and the discussion author accepts the answer.",
@@ -118,7 +118,7 @@ const OPT_IN_ENTRIES: CatalogEntry[] = [
     notes: [
       "A single account can only contribute one star per repository, so the strategy needs as many distinct accounts as stars.",
       "The stars must be on a repository owned by the main account.",
-      "HIGH RISK: Acceptable Use Policies §4 list 'rank abuse, such as automated starring or following' as prohibited. GAF requires an explicit consent flag and documents the risk.",
+      "HIGH RISK: Acceptable Use Policies list 'rank abuse, such as automated starring or following' as prohibited. GAF requires an explicit consent flag and documents the risk.",
     ],
   },
 ];

@@ -24,7 +24,7 @@ function makeRun(runId = newRunId()): RunState {
     targets: { "pull-shark": 2 },
     accounts: { main: "octocat" },
     dryRun: false,
-    flags: { allowOptIn: false, allowHighRisk: false, yes: false },
+    flags: { allowHighRisk: false },
   });
 }
 

@@ -6,7 +6,7 @@ in a grey area of GitHub's Acceptable Use Policies. This document explains the
 risk classification the tool uses, where the line is drawn, what the consent
 flags actually do, and where every consent decision is recorded.
 
-## Acceptable Use Policies §4 (quoted)
+## Acceptable Use Policies (quoted)
 
 The relevant text from GitHub's Acceptable Use Policies (section 4. "Compliance
 with Laws and Regulations" / what is prohibited) includes:
@@ -28,12 +28,11 @@ Every action in the catalogue is tagged `PolicyRisk` (`src/domain/policy.ts`):
 |------------|------------------------------------------------------------|------------------|
 | `safe`     | normal GitHub activity on repositories/PRs you own         | none             |
 | `opt-in`   | multi-account activity that could look coordinated         | `--allow-policy-risks` or `policy.allowOptInAchievements: true` |
-| `high-risk`| activity expressly contemplated by AUP §4 (automated starring) | `--allow-policy-risks` **and** `--allow-high-risk` |
+| `high-risk`| activity expressly contemplated by AUP | `--allow-policy-risks` **and** `--allow-high-risk` |
 
 Only one achievement is currently `high-risk`: **starstruck**, because the
 requirements state it is earned by "rank, such as automated starring" territory
-— each distinct owned account stars the target repository, which is exactly the
-§4 "automated starring" pattern. `galaxy-brain` is `opt-in` because it relies
+— each distinct owned account stars the target repository, which is exactly the "automated starring" pattern. `galaxy-brain` is `opt-in` because it relies
 on two owned accounts coordinating on a discussion answer, which borders on
 "coordinated inauthentic activity".
 
@@ -95,4 +94,4 @@ The same `--home` override that relocates config also relocates the audit log.
 - `src/executor/executor.ts` — per-action enforcement + skipped marking.
 - `src/state/audit-log.ts` — append-only JSONL audit store.
 - `src/utils/redact.ts` — token/secret redaction in every log path.
-- `src/cli/ui/policy-banner.ts` — the literal §4 banner printed at run time.
+- `src/cli/ui/policy-banner.ts` — the literal banner printed at run time.

@@ -38,9 +38,7 @@ export interface RunState {
   dryRun: boolean;
   targets: Record<string, number>;
   flags: {
-    allowOptIn: boolean;
     allowHighRisk: boolean;
-    yes: boolean;
   };
   /** Account id -> GitHub login, frozen at run creation time. */
   accounts: Record<string, string>;

@@ -9,7 +9,7 @@ import { accountsAdd, accountsList, accountsTest, accountsRemove, accountsSetEma
 import { planCommand } from "./commands/plan.js";
 import { runCommand } from "./commands/run.js";
 import { statusCommand } from "./commands/status.js";
-import { configGetCommand, configSetCommand, configProgressCommand } from "./commands/config.js";
+import { configGetCommand, configSetCommand, configKeysCommand } from "./commands/config.js";
 import { achievementsListCommand, achievementsShowCommand } from "./commands/achievements.js";
 import { progressCommand } from "./commands/progress.js";
 
@@ -22,18 +22,14 @@ program
   .name("gh-forge")
   .description("GitHub Achievement Forge (GAF) — plan and execute real GitHub actions to earn achievements using accounts you own.")
   .version(version)
-  .option("--home <path>", "override gh-forge home directory")
   .option("--verbose", "enable debug logging")
-  .option("--quiet", "suppress non-error output")
-  .option("--yes", "skip interactive confirmations (policy flags still required)");
+  .option("--quiet", "suppress non-error output");
 
 function globalOptions(): GlobalCliOptions {
   const opts = program.opts();
   return {
-    home: opts.home as string | undefined,
     verbose: opts.verbose as boolean | undefined,
     quiet: opts.quiet as boolean | undefined,
-    yes: opts.yes as boolean | undefined,
   };
 }
 
@@ -47,7 +43,7 @@ program
   .option("--force", "overwrite existing configuration")
   .action(async (opts) => {
     try {
-      const paths = pathsFor(globalOptions());
+      const paths = pathsFor();
       await initCommand(paths, {
         main: opts.main as string | undefined,
         force: opts.force as boolean | undefined,
@@ -79,7 +75,7 @@ accountsCmd
   .option("--force", "overwrite if the account already exists")
   .action(async (id, opts) => {
     try {
-      const paths = pathsFor(globalOptions());
+      const paths = pathsFor();
       const code = await accountsAdd(paths, id, {
         role: opts.role as "main" | "helper" | undefined,
         username: opts.username as string | undefined,
@@ -104,7 +100,7 @@ accountsCmd
   .option("--json", "output as JSON")
   .action(async (opts) => {
     try {
-      const paths = pathsFor(globalOptions());
+      const paths = pathsFor();
       const code = await accountsList(paths, opts.json as boolean);
       process.exitCode = code;
     } catch (error) {
@@ -118,7 +114,7 @@ accountsCmd
   .description("Test authentication for one or all accounts.")
   .action(async (accountId) => {
     try {
-      const paths = pathsFor(globalOptions());
+      const paths = pathsFor();
       const code = await accountsTest(paths, accountId as string | undefined);
       process.exitCode = code;
     } catch (error) {
@@ -132,7 +128,7 @@ accountsCmd
   .description("Remove an account from the configuration.")
   .action(async (id) => {
     try {
-      const paths = pathsFor(globalOptions());
+      const paths = pathsFor();
       const code = await accountsRemove(paths, id);
       process.exitCode = code;
     } catch (error) {
@@ -146,7 +142,7 @@ accountsCmd
   .description("Set the commit email for an account (must be verified on GitHub).")
   .action(async (id, email) => {
     try {
-      const paths = pathsFor(globalOptions());
+      const paths = pathsFor();
       const code = await accountsSetEmail(paths, id, email);
       process.exitCode = code;
     } catch (error) {
@@ -164,7 +160,7 @@ program
   .option("--json", "output as JSON")
   .action(async (opts) => {
     try {
-      const paths = pathsFor(globalOptions());
+      const paths = pathsFor();
       const gOpts = globalOptions();
       const code = await planCommand(paths, {
         only: opts.only as string[] | undefined,
@@ -187,23 +183,20 @@ program
   .option("--dry-run", "validate and print actions without executing")
   .option("--only <id...>", "limit execution to specific achievement ids")
   .option("--target <id=level...>", "override per-achievement target levels")
-  .option("--allow-policy-risks", "consent to opt-in achievements (Galaxy Brain)")
-  .option("--allow-high-risk", "consent to high-risk achievements (Starstruck)")
+  .option("--allow-high-risk", "consent to high-risk achievements (Galaxy Brain, Starstruck)")
   .option("--resume [runId]", "resume a previous run (latest resumable if no id)")
   .option("--status", "show status of the latest run instead of executing")
   .action(async (opts) => {
     try {
-      const paths = pathsFor(globalOptions());
+      const paths = pathsFor();
       const gOpts = globalOptions();
       const code = await runCommand(paths, {
         dryRun: opts.dryRun as boolean | undefined,
         only: opts.only as string[] | undefined,
         target: opts.target as string[] | undefined,
-        allowPolicyRisks: opts.allowPolicyRisks as boolean | undefined,
         allowHighRisk: opts.allowHighRisk as boolean | undefined,
         resume: opts.resume as string | boolean | undefined,
         status: opts.status as boolean | undefined,
-        yes: gOpts.yes,
         verbose: gOpts.verbose,
         quiet: gOpts.quiet,
       });
@@ -222,7 +215,7 @@ program
   .option("--json", "output as JSON")
   .action(async (opts) => {
     try {
-      const paths = pathsFor(globalOptions());
+      const paths = pathsFor();
       const code = await statusCommand(paths, {
         run: opts.run as string | undefined,
         json: opts.json as boolean | undefined,
@@ -237,14 +230,23 @@ program
 // ─── config ──────────────────────────────────────────────────────────────────
 const configCmd = program
   .command("config")
-  .description("Read and write gh-forge configuration.");
+  .description("Read and write gh-forge configuration.")
+  .action(async () => {
+    try {
+      const code = await configKeysCommand();
+      process.exitCode = code;
+    } catch (error) {
+      renderError(error);
+      process.exitCode = 1;
+    }
+  });
 
 configCmd
   .command("get <key>")
   .description("Get a configuration value (e.g. execution.minIntervalMs).")
   .action(async (key) => {
     try {
-      const paths = pathsFor(globalOptions());
+      const paths = pathsFor();
       const code = await configGetCommand(paths, key);
       process.exitCode = code;
     } catch (error) {
@@ -258,29 +260,8 @@ configCmd
   .description("Set a configuration value (e.g. execution.minIntervalMs 2000).")
   .action(async (key, value) => {
     try {
-      const paths = pathsFor(globalOptions());
+      const paths = pathsFor();
       const code = await configSetCommand(paths, key, value);
-      process.exitCode = code;
-    } catch (error) {
-      renderError(error);
-      process.exitCode = 1;
-    }
-  });
-
-configCmd
-  .command("progress")
-  .description("Show or sync known achievement progress.")
-  .option("--sync", "scan public profiles and reconcile progress")
-  .option("--json", "output as JSON")
-  .action(async (opts) => {
-    try {
-      const paths = pathsFor(globalOptions());
-      const gOpts = globalOptions();
-      const code = await configProgressCommand(paths, {
-        sync: opts.sync as boolean | undefined,
-        json: opts.json as boolean | undefined,
-        verbose: gOpts.verbose,
-      });
       process.exitCode = code;
     } catch (error) {
       renderError(error);
@@ -331,7 +312,7 @@ program
   .option("--json", "output as JSON")
   .action(async (achievementId, level, opts) => {
     try {
-      const paths = pathsFor(globalOptions());
+      const paths = pathsFor();
       const code = await progressCommand(paths, achievementId as string | undefined, level as string | undefined, {
         clear: opts.clear as boolean | undefined,
         json: opts.json as boolean | undefined,

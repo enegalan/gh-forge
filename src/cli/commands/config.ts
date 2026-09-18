@@ -1,15 +1,32 @@
 import type { GafPaths } from "../../config/paths.js";
 import type { Config } from "../../config/schema.js";
+import { resolveHomeDir, resolvePaths } from "../../config/paths.js";
 import { configStoreFor } from "../context.js";
 import { printLine, printJson, section } from "../ui/format.js";
 import { UsageError } from "../../utils/errors.js";
 
 const NESTED_SEPARATOR = ".";
 
-export interface ConfigProgressOptions {
-  sync?: boolean;
-  json?: boolean;
-  verbose?: boolean;
+const CONFIG_KEYS: Array<{ key: string; description: string }> = [
+  { key: "mainAccount", description: "main account id" },
+  { key: "policy.allowHighRisk", description: "allow high-risk achievements (Galaxy Brain, Starstruck)" },
+  { key: "execution.minIntervalMs", description: "minimum interval between actions (ms)" },
+  { key: "execution.mergeMethod", description: "merge method: merge, squash, or rebase" },
+  { key: "execution.branchPrefix", description: "branch name prefix" },
+  { key: "profileScan.enabled", description: "enable profile scanning" },
+  { key: "profileScan.baseUrl", description: "GitHub base URL for profile scans" },
+];
+
+/** Shows configurable keys with their current values. */
+export async function configKeysCommand(): Promise<number> {
+  const store = configStoreFor(resolvePaths(resolveHomeDir()));
+  const config = await store.loadOrDefault();
+  section("Configurable keys");
+  for (const { key, description } of CONFIG_KEYS) {
+    const value = getConfigKey(config, key);
+    printLine(`  ${key} = ${JSON.stringify(value)}  (${description})`);
+  }
+  return 0;
 }
 
 /** Reads a nested config key like `execution.minIntervalMs`. */
@@ -31,56 +48,6 @@ export async function configSetCommand(paths: GafPaths, key: string, value: stri
     setConfigKey(config, key, coerceValue(value));
   });
   printLine(`Set ${key} = ${coerceValue(value)}`);
-  return 0;
-}
-
-/** Shows progress and optionally scans public profiles to reconcile knownProgress. */
-export async function configProgressCommand(paths: GafPaths, options: ConfigProgressOptions): Promise<number> {
-  const { ProgressStore } = await import("../../config/progress.js");
-const { scanProfile, tierToLevel, describeScraped } = await import("../../profile/achievement-scraper.js");
-    const { recordAudit } = await import("../../state/audit-log.js");
-  const progressStore = new ProgressStore(paths);
-  const file = await progressStore.load();
-
-  if (options.sync === true) {
-    const config = await configStoreFor(paths).loadOrDefault();
-    const mainUsername = config.accounts[config.mainAccount ?? ""]?.username;
-    if (mainUsername === undefined) {
-      throw new UsageError("No main account is configured; a profile scan needs a username.");
-    }
-    const scan = await scanProfile(mainUsername, { baseUrl: config.profileScan.baseUrl });
-    if (scan.warnings.length > 0) {
-      printLine("Scan warnings:");
-      for (const warning of scan.warnings) printLine(`  - ${warning}`);
-    }
-    if (scan.achievements.length > 0) {
-      for (const achievement of scan.achievements) {
-        await progressStore.setLevel(achievement.slug, tierToLevel(achievement.tier), {
-          source: "scraped",
-          note: `Profile scan at ${scan.scannedAt}`,
-        });
-      }
-      await recordAudit(paths, {
-        at: new Date().toISOString(),
-        kind: "profile-scan",
-        achievementIds: scan.achievements.map((entry) => entry.slug),
-        policyRisk: "safe",
-        flags: [],
-      });
-      printLine(`Reconciled ${scan.achievements.length} achievements from ${mainUsername}'s public profile.`);
-      for (const entry of scan.achievements) printLine(`  ${describeScraped(entry)}`);
-    }
-  }
-
-  const entries = Object.entries(file.entries).sort(([a], [b]) => a.localeCompare(b));
-  if (entries.length === 0) {
-    printLine("No known progress yet. Set levels with `gh-forge progress <id> <level>` or run `--sync`.");
-    return 0;
-  }
-  section("Known progress");
-  for (const [id, entry] of entries) {
-    printLine(`  ${id}: level ${entry.level} (${entry.source}${entry.updatedAt === undefined ? "" : `, ${entry.updatedAt}`})`);
-  }
   return 0;
 }
 

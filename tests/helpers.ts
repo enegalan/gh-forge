@@ -310,7 +310,6 @@ export interface MakeContextOptions {
   knownProgress?: Record<string, number>;
   sandboxOwner?: string;
   sandboxName?: string;
-  allowOptIn?: boolean;
   allowHighRisk?: boolean;
 }
 
@@ -350,7 +349,6 @@ export function makeContext(options: MakeContextOptions = {}): AchievementContex
     },
     logger: silentLogger,
     policyGates: {
-      allowOptIn: options.allowOptIn ?? true,
       allowHighRisk: options.allowHighRisk ?? true,
     },
     executor,
@@ -366,7 +364,7 @@ export function makeRunState(overrides: Partial<RunState> = {}): RunState {
     status: "in_progress",
     dryRun: false,
     targets: {},
-    flags: { allowOptIn: true, allowHighRisk: true, yes: false },
+    flags: { allowHighRisk: true },
     accounts: { main: "octocat" },
     actions: [],
     observations: [],

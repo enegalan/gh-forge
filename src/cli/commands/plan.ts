@@ -50,7 +50,6 @@ export async function planCommand(paths: GafPaths, options: PlanCommandOptions):
     targets,
     ...(options.only === undefined ? {} : { only: options.only }),
     policyGates: {
-      allowOptIn: runtime.config.policy.allowOptIn,
       allowHighRisk: runtime.config.policy.allowHighRisk,
     },
   });

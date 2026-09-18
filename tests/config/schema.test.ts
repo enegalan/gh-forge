@@ -14,7 +14,6 @@ describe("configSchema", () => {
     expect(config.accounts).toEqual({});
     expect(config.targets).toEqual({});
     expect(config.repositories.sandbox).toBeNull();
-    expect(config.policy.allowOptIn).toBe(false);
     expect(config.policy.allowHighRisk).toBe(false);
     expect(config.execution.minIntervalMs).toBe(1500);
     expect(config.profileScan.enabled).toBe(false);

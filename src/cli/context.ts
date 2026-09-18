@@ -8,14 +8,11 @@ import { createLogger, type LogLevel, type Logger } from "../utils/logger.js";
 import { ConfigError } from "../utils/errors.js";
 
 export interface GlobalCliOptions {
-  home?: string;
   verbose?: boolean;
   quiet?: boolean;
-  yes?: boolean;
 }
 
-export function pathsFor(options: GlobalCliOptions): GafPaths {
-  if (options.home !== undefined && options.home !== "") return resolvePaths(options.home);
+export function pathsFor(): GafPaths {
   return resolvePaths(resolveHomeDir());
 }
 
