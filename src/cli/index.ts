@@ -64,7 +64,7 @@ const accountsCmd = program
 accountsCmd
   .command("add <id>")
   .description("Add or update an account.")
-  .option("--role <main|helper>", "account role", "helper")
+  .option("--role <main|helper>", "account role (defaults to main for id \"main\")")
   .option("--username <login>", "GitHub username (required)")
   .option("--auth <method>", "authentication method: gh, token-command, env", "gh")
   .option("--login <login>", "login hint for gh keychain auth")
