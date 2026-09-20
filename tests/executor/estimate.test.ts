@@ -67,7 +67,11 @@ describe("estimateActions", () => {
 
   it("sums actions and groups seconds by kind", () => {
     const estimate = estimateActions(
-      [{ kind: "merged-pull-request" }, { kind: "merged-pull-request" }, { kind: "repository-star" }],
+      [
+        { kind: "merged-pull-request" },
+        { kind: "merged-pull-request" },
+        { kind: "repository-star" },
+      ],
       1_500,
     );
     expect(estimate.actionCount).toBe(3);

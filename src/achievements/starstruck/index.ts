@@ -9,18 +9,22 @@ import { requireCatalogEntry } from "../catalog.js";
  * star a repository once), so `accountsRequired` equals the number of stars
  * still missing. The main account cannot star its own repository, so planets
  * must come from helper accounts.
- *
- * Policy: classified `high-risk`. GitHub's Acceptable Use Policies list
- * "rank abuse, such as automated starring or following" as prohibited activity.
- * GAF requires `--allow-high-risk`, prints a warning and records the consent in
- * the audit log; it never creates accounts, never uses third-party accounts and
- * never tries to hide the activity from GitHub.
  */
 export class StarstruckAchievement extends BaseAchievement {
+  /**
+   * Creates a new Starstruck achievement.
+   */
   constructor() {
     super(requireCatalogEntry("starstruck"));
   }
 
+  /**
+   * Gets the requirements for the achievement.
+   *
+   * @param targetTier - The target tier.
+   * @param context - The achievement context.
+   * @returns The requirements.
+   */
   override getRequirements(targetTier: number, context: AchievementContext): Requirement[] {
     const units = this.unitsFor(targetTier, this.currentLevel(context));
     if (units === 0) return [];
@@ -44,6 +48,12 @@ export class StarstruckAchievement extends BaseAchievement {
     ];
   }
 
+  /**
+   * Validates the achievement.
+   *
+   * @param context - The achievement context.
+   * @returns The validation result.
+   */
   override async validate(context: AchievementContext): Promise<ValidationResult> {
     const base = await super.validate(context);
     const helpers = helpersOf(context);
@@ -59,12 +69,12 @@ export class StarstruckAchievement extends BaseAchievement {
           `Required accounts: ${missing} (one per star). Configured accounts: ${helpers.length}. Missing accounts: ${missing - helpers.length}.`,
         );
         base.warnings.push(
-          "GAF never creates accounts and never automates identity creation. Create the accounts yourself, then authenticate each one with `gh-forge accounts add`.",
+          "GitHub Achievement Forge never creates accounts and never automates identity creation. Create the accounts yourself, then authenticate each one with `gh-forge accounts add`.",
         );
       }
       if (context.sandbox.visibility === "private") {
         base.issues.push(
-          "The starred repository must be reachable by every account; make the sandbox repository public or add each account as a collaborator (GAF does not do this automatically).",
+          "The starred repository must be reachable by every account; make the sandbox repository public or add each account as a collaborator (GitHub Achievement Forge does not do this automatically).",
         );
       }
       base.warnings.push(

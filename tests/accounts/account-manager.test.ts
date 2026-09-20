@@ -8,15 +8,17 @@ function mockFetchFor(login: string, scopes = ["repo"]): typeof fetch {
     const url = String(input);
     if (url.includes("/user/emails")) {
       return new Response(
-        JSON.stringify([{ email: `${login}@example.com`, primary: true, verified: true, visibility: "public" }]),
+        JSON.stringify([
+          { email: `${login}@example.com`, primary: true, verified: true, visibility: "public" },
+        ]),
         { status: 200, headers: { "content-type": "application/json" } },
       );
     }
     if (url.includes("/rate_limit")) {
-      return new Response(
-        JSON.stringify({ rate: { limit: 5000, remaining: 5000, reset: 0 } }),
-        { status: 200, headers: { "content-type": "application/json" } },
-      );
+      return new Response(JSON.stringify({ rate: { limit: 5000, remaining: 5000, reset: 0 } }), {
+        status: 200,
+        headers: { "content-type": "application/json" },
+      });
     }
     if (url.includes("/repos/")) {
       return new Response(

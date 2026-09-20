@@ -14,12 +14,27 @@ import { formatZodError } from "./config.js";
  * profile scan (`source: "scraped"`).
  */
 export class ProgressStore {
+  /**
+   * The paths.
+   *
+   * @param paths - The paths.
+   */
   private readonly paths: GafPaths;
 
+  /**
+   * Creates a new progress store.
+   *
+   * @param paths - The paths.
+   */
   constructor(paths: GafPaths) {
     this.paths = paths;
   }
 
+  /**
+   * Loads the progress file.
+   *
+   * @returns The progress file.
+   */
   async load(): Promise<ProgressFile> {
     const raw = await readJson<unknown>(this.paths.progressFile);
     if (raw === null) return progressFileSchema.parse({});
@@ -32,11 +47,28 @@ export class ProgressStore {
     return result.data;
   }
 
+  /**
+   * Saves the progress file.
+   *
+   * @param file - The progress file.
+   */
   async save(file: ProgressFile): Promise<void> {
     await writeJsonAtomic(this.paths.progressFile, progressFileSchema.parse(file));
   }
 
-  async setLevel(achievementId: string, level: number, entry?: Partial<ProgressEntry>): Promise<ProgressFile> {
+  /**
+   * Sets the level of an achievement.
+   *
+   * @param achievementId - The ID of the achievement.
+   * @param level - The level.
+   * @param entry - The entry.
+   * @returns The progress file.
+   */
+  async setLevel(
+    achievementId: string,
+    level: number,
+    entry?: Partial<ProgressEntry>,
+  ): Promise<ProgressFile> {
     const file = await this.load();
     file.entries[achievementId] = {
       level,
@@ -48,6 +80,12 @@ export class ProgressStore {
     return file;
   }
 
+  /**
+   * Clears the level of an achievement.
+   *
+   * @param achievementId - The ID of the achievement.
+   * @returns The progress file.
+   */
   async clear(achievementId: string): Promise<ProgressFile> {
     const file = await this.load();
     delete file.entries[achievementId];
@@ -55,7 +93,11 @@ export class ProgressStore {
     return file;
   }
 
-  /** Returns a map of achievementId -> earned tier level (missing means 0). */
+  /**
+   * Returns a map of achievementId -> earned tier level (missing means 0).
+   *
+   * @returns The levels.
+   */
   async levels(): Promise<Record<string, number>> {
     const file = await this.load();
     const levels: Record<string, number> = {};

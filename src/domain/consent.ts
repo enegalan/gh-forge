@@ -1,17 +1,21 @@
 import type { PolicyGates, PolicyRisk } from "./policy.js";
 import { riskAllowed } from "./policy.js";
 
+/**
+ * The read-only risk message.
+ */
 export const READ_ONLY_RISK_MESSAGE =
-  "These actions are outside the consented risk level. GAF never executes them without explicit flags, and it never bypasses a policy."
+  "These actions are outside the consented risk level. GitHub Achievement Forge never executes them without explicit flags, and it never bypasses a policy.";
 
 /**
  * Decides whether a set of planned actions is allowed by the pre-approved risk
  * gates. The executor itself also checks `riskAllowed` per action; this helper
  * gives the CLI an early, human readable gate.
+ *
+ * @param maxRisk - The maximum risk.
+ * @param gates - The gates.
+ * @returns True if the risk is accepted, false otherwise.
  */
-export function markRiskAccepted(
-  maxRisk: PolicyRisk,
-  gates: PolicyGates,
-): boolean {
+export function markRiskAccepted(maxRisk: PolicyRisk, gates: PolicyGates): boolean {
   return riskAllowed(maxRisk, gates);
 }

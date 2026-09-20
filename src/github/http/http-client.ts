@@ -1,22 +1,32 @@
 import type { Logger } from "../../utils/logger.js";
 import { createSilentLogger } from "../../utils/logger.js";
-import { GitHubHttpError, type HttpMethod, type HttpRequestOptions, type HttpResponse, type RateLimitInfo } from "./http-errors.js";
+import {
+  GitHubHttpError,
+  type HttpMethod,
+  type HttpRequestOptions,
+  type HttpResponse,
+  type RateLimitInfo,
+} from "./http-errors.js";
 
+/**
+ * The HTTP client options.
+ */
 export interface HttpClientOptions {
-  /** Resolved lazily so tokens live in memory for the shortest time possible. */
   token: () => Promise<string>;
   baseUrl?: string;
   fetchImpl?: typeof fetch;
   userAgent?: string;
   apiVersion?: string;
   maxRetries?: number;
-  /** Minimum delay between two requests for the same account. */
   minIntervalMs?: number;
   requestTimeoutMs?: number;
   sleep?: (ms: number) => Promise<void>;
   logger?: Logger;
 }
 
+/**
+ * The HTTP client.
+ */
 export interface HttpClient {
   request<T>(options: HttpRequestOptions): Promise<HttpResponse<T>>;
   requestOptional<T>(options: HttpRequestOptions): Promise<HttpResponse<T> | null>;
@@ -24,14 +34,38 @@ export interface HttpClient {
   readonly rateLimit: RateLimitInfo | null;
 }
 
+/**
+ * The default base URL.
+ */
 const DEFAULT_BASE_URL = "https://api.github.com";
+
+/**
+ * The default API version.
+ */
 const DEFAULT_API_VERSION = "2022-11-28";
 
+/**
+ * The fetch HTTP client.
+ */
 export class FetchHttpClient implements HttpClient {
+  /**
+   * The options.
+   */
   private readonly options: Required<Omit<HttpClientOptions, "logger">> & { logger: Logger };
+  /**
+   * The last request at.
+   */
   private lastRequestAt = 0;
+  /**
+   * The rate limit info.
+   */
   private rateLimitInfo: RateLimitInfo | null = null;
 
+  /**
+   * Creates a new fetch HTTP client.
+   *
+   * @param options - The options.
+   */
   constructor(options: HttpClientOptions) {
     this.options = {
       baseUrl: options.baseUrl ?? DEFAULT_BASE_URL,
@@ -47,10 +81,21 @@ export class FetchHttpClient implements HttpClient {
     };
   }
 
+  /**
+   * The rate limit info.
+   *
+   * @returns The rate limit info.
+   */
   get rateLimit(): RateLimitInfo | null {
     return this.rateLimitInfo;
   }
 
+  /**
+   * Sends a request.
+   *
+   * @param options - The options.
+   * @returns The response.
+   */
   async request<T>(options: HttpRequestOptions): Promise<HttpResponse<T>> {
     const response = await this.send<T>(options, false);
     if (response === null) {
@@ -64,10 +109,23 @@ export class FetchHttpClient implements HttpClient {
     return response;
   }
 
+  /**
+   * Sends a request optionally.
+   *
+   * @param options - The options.
+   * @returns The response.
+   */
   async requestOptional<T>(options: HttpRequestOptions): Promise<HttpResponse<T> | null> {
     return this.send<T>(options, true);
   }
 
+  /**
+   * Sends a GraphQL request.
+   *
+   * @param query - The query.
+   * @param variables - The variables.
+   * @returns The response.
+   */
   async graphql<T>(query: string, variables: Record<string, unknown> = {}): Promise<T> {
     const response = await this.request<{ data?: T; errors?: Array<{ message: string }> }>({
       method: "POST",
@@ -96,7 +154,17 @@ export class FetchHttpClient implements HttpClient {
     return payload.data;
   }
 
-  private async send<T>(options: HttpRequestOptions, allowNotFound: boolean): Promise<HttpResponse<T> | null> {
+  /**
+   * Sends a request.
+   *
+   * @param options - The options.
+   * @param allowNotFound - Whether to allow not found.
+   * @returns The response.
+   */
+  private async send<T>(
+    options: HttpRequestOptions,
+    allowNotFound: boolean,
+  ): Promise<HttpResponse<T> | null> {
     const method: HttpMethod = options.method ?? "GET";
     const url = this.buildUrl(options);
     let attempt = 0;
@@ -161,13 +229,24 @@ export class FetchHttpClient implements HttpClient {
           message: extractMessage(data),
           retryAfterSeconds: readRetryAfter(response),
           details: data,
-          code: response.status === 403 || response.status === 429 ? "GITHUB_RATE_LIMITED" : "GITHUB_HTTP",
+          code:
+            response.status === 403 || response.status === 429
+              ? "GITHUB_RATE_LIMITED"
+              : "GITHUB_HTTP",
         });
       }
 
       return { status: response.status, headers: response.headers, data };
     }
   }
+
+  /**
+   * Checks if a response should be retried.
+   *
+   * @param response - The response.
+   * @param attempt - The attempt.
+   * @returns True if the response should be retried, false otherwise.
+   */
   private shouldRetry(response: Response, attempt: number): boolean {
     if (attempt > this.options.maxRetries) return false;
     if (response.status === 429) return true;
@@ -180,6 +259,13 @@ export class FetchHttpClient implements HttpClient {
     return false;
   }
 
+  /**
+   * Backoffs.
+   *
+   * @param attempt - The attempt.
+   * @param retryAfterSeconds - The retry after seconds.
+   * @returns The promise.
+   */
   private async backoff(attempt: number, retryAfterSeconds: number | null = null): Promise<void> {
     const base =
       retryAfterSeconds === null ? Math.min(2 ** attempt * 1000, 30_000) : retryAfterSeconds * 1000;
@@ -187,6 +273,11 @@ export class FetchHttpClient implements HttpClient {
     await this.options.sleep(base + jitter);
   }
 
+  /**
+   * Throttles.
+   *
+   * @returns The promise.
+   */
   private async throttle(): Promise<void> {
     if (this.options.minIntervalMs <= 0) return;
     const wait = this.lastRequestAt + this.options.minIntervalMs - Date.now();
@@ -194,6 +285,12 @@ export class FetchHttpClient implements HttpClient {
     this.lastRequestAt = Date.now();
   }
 
+  /**
+   * Builds a URL.
+   *
+   * @param options - The options.
+   * @returns The URL.
+   */
   private buildUrl(options: HttpRequestOptions): string {
     const base = options.path.startsWith("http")
       ? options.path
@@ -207,6 +304,11 @@ export class FetchHttpClient implements HttpClient {
     return url.toString();
   }
 
+  /**
+   * Captures the rate limit.
+   *
+   * @param headers - The headers.
+   */
   private captureRateLimit(headers: Headers): void {
     const limit = headers.get("x-ratelimit-limit");
     const remaining = headers.get("x-ratelimit-remaining");
@@ -223,6 +325,12 @@ export class FetchHttpClient implements HttpClient {
   }
 }
 
+/**
+ * Parses a body.
+ *
+ * @param response - The response.
+ * @returns The body.
+ */
 async function parseBody<T>(response: Response): Promise<T> {
   const contentType = response.headers.get("content-type") ?? "";
   const text = await response.text();
@@ -237,6 +345,12 @@ async function parseBody<T>(response: Response): Promise<T> {
   return text as unknown as T;
 }
 
+/**
+ * Extracts a message.
+ *
+ * @param data - The data.
+ * @returns The message.
+ */
 function extractMessage(data: unknown): string {
   if (typeof data === "string") return data;
   if (data !== null && typeof data === "object" && "message" in data) {
@@ -246,6 +360,12 @@ function extractMessage(data: unknown): string {
   return "request failed";
 }
 
+/**
+ * Reads the retry after.
+ *
+ * @param response - The response.
+ * @returns The retry after.
+ */
 function readRetryAfter(response: Response): number | null {
   const header = response.headers.get("retry-after");
   if (header !== null) {
@@ -263,7 +383,12 @@ function readRetryAfter(response: Response): number | null {
   return null;
 }
 
+/**
+ * The default sleep function.
+ *
+ * @param ms - The milliseconds.
+ * @returns The promise.
+ */
 function defaultSleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
-

@@ -3,6 +3,9 @@ import type { AchievementRegistry } from "../achievements/achievement-registry.j
 import { UsageError } from "../utils/errors.js";
 import { parseKeyValue, parseNumber } from "./ui/format.js";
 
+/**
+ * A target override.
+ */
 export interface TargetOverride {
   id: string;
   level: number;
@@ -11,6 +14,9 @@ export interface TargetOverride {
 /**
  * Parses `--target <id>=<level>` CLI arguments into a Record<achievementId, level>.
  * Levels are clamped to 0..4 (0 clears the target).
+ *
+ * @param pairs - The pairs.
+ * @returns The targets.
  */
 export function parseTargets(pairs: string[]): Record<string, number> {
   const targets: Record<string, number> = {};
@@ -25,12 +31,22 @@ export function parseTargets(pairs: string[]): Record<string, number> {
   return targets;
 }
 
-/** Builds the default planning targets from `config.targets`. */
+/**
+ * Builds the default planning targets from `config.targets`.
+ *
+ * @param config - The config.
+ * @returns The default targets.
+ */
 export function defaultTargets(config: Config): Record<string, number> {
   return { ...config.targets };
 }
 
-/** Fails if any --only id is not a known achievement. */
+/**
+ * Fails if any --only id is not a known achievement.
+ *
+ * @param ids - The IDs.
+ * @param registry - The registry.
+ */
 export function validateAchievementIds(ids: string[], registry: AchievementRegistry): void {
   const known = new Set(registry.ids());
   const unknown = ids.filter((id) => !known.has(id));

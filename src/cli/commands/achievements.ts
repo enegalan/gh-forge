@@ -4,6 +4,12 @@ import { riskLabel, POLICY_NOTES } from "../../domain/policy.js";
 import { printLine, printJson, section, table } from "../ui/format.js";
 import { UsageError } from "../../utils/errors.js";
 
+/**
+ * Lists the achievements.
+ *
+ * @param asJson - Whether to output as JSON.
+ * @returns The result code.
+ */
 export async function achievementsListCommand(asJson: boolean): Promise<number> {
   if (asJson) {
     printJson(
@@ -37,11 +43,22 @@ export async function achievementsListCommand(asJson: boolean): Promise<number> 
     ),
   );
   printLine();
-  printLine("`automatable = yes` means GAF can plan and execute concrete GitHub actions for it.");
-  printLine("`high-risk` requires the explicit consent flag --allow-high-risk at execution time. See docs/SECURITY.md.");
+  printLine(
+    "`automatable = yes` means GitHub Achievement Forge can plan and execute concrete GitHub actions for it.",
+  );
+  printLine(
+    "`high-risk` requires the explicit consent flag --allow-high-risk at execution time. See docs/SECURITY.md.",
+  );
   return 0;
 }
 
+/**
+ * Shows an achievement.
+ *
+ * @param id - The ID of the achievement.
+ * @param asJson - Whether to output as JSON.
+ * @returns The result code.
+ */
 export async function achievementsShowCommand(id: string, asJson: boolean): Promise<number> {
   const registry = createAchievementRegistry();
   const achievement = registry.tryGet(id);
@@ -103,9 +120,13 @@ export async function achievementsShowCommand(id: string, asJson: boolean): Prom
   return 0;
 }
 
+/**
+ * Describes the tiers of an achievement.
+ *
+ * @param tiers - The tiers.
+ * @returns The description of the tiers.
+ */
 function describeTiers(tiers: { level: number; name: string; requirement: number }[]): string {
   if (tiers.length === 0) return "(none documented)";
-  return tiers
-    .map((tier) => `${tier.name}(${tier.requirement})`)
-    .join(", ");
+  return tiers.map((tier) => `${tier.name}(${tier.requirement})`).join(", ");
 }

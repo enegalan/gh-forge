@@ -12,9 +12,9 @@ full transparency about policy risk.
 
 > **Honesty first.** `gh-forge` is a real automation tool that performs real
 > GitHub API calls. Some achievements live in a grey area of GitHub's
-> Acceptable Use Policies. `gh-forge` refuses to hide that: opt-in and
-> high-risk actions require explicit consent flags and are recorded in an
-> audit log. Read [`docs/SECURITY.md`](docs/SECURITY.md) before running.
+> Acceptable Use Policies. `gh-forge` refuses to hide that: high-risk
+> actions require explicit consent flags and are recorded in an audit log.
+> Read [`docs/SECURITY.md`](docs/SECURITY.md) before running.
 
 ---
 
@@ -81,13 +81,13 @@ overwrite an existing config (accounts and progress are preserved).
 
 ### `gh-forge accounts`
 
-| subcommand | purpose |
-|---|---|
-| `add <id> [--role main\|helper] [--username <login>] [--auth gh\|token-command\|env]` | add one of your accounts |
-| `list` | show all configured accounts |
-| `test [accountId]` | verify each account is authenticated and probe its capabilities (scopes, repo access, discussions, ...) |
-| `remove <id>` | forget an account |
-| `set-email <id> <email>` | set a verified commit email (needed for Pair Extraordinaire) |
+| subcommand                                                                            | purpose                                                                                                 |
+| ------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------- |
+| `add <id> [--role main\|helper] [--username <login>] [--auth gh\|token-command\|env]` | add one of your accounts                                                                                |
+| `list`                                                                                | show all configured accounts                                                                            |
+| `test [accountId]`                                                                    | verify each account is authenticated and probe its capabilities (scopes, repo access, discussions, ...) |
+| `remove <id>`                                                                         | forget an account                                                                                       |
+| `set-email <id> <email>`                                                              | set a verified commit email (needed for Pair Extraordinaire)                                            |
 
 Authentication methods:
 
@@ -100,11 +100,11 @@ Authentication methods:
 
 ### `gh-forge plan`
 
-| option | purpose |
-|---|---|
+| option                | purpose                                                            |
+| --------------------- | ------------------------------------------------------------------ |
 | `--target <id=level>` | override a target level (1–4, matching default/bronze/silver/gold) |
-| `--only <id...>` | plan only specific achievements |
-| `--json` | machine-readable output |
+| `--only <id...>`      | plan only specific achievements                                    |
+| `--json`              | machine-readable output                                            |
 
 `plan` is read-only — it never touches GitHub. It also prints an estimated
 execution time, derived from the request count per action kind and
@@ -112,15 +112,14 @@ execution time, derived from the request count per action kind and
 
 ### `gh-forge run`
 
-| option | purpose |
-|---|---|
-| `--dry-run` | validate and print the actions **without executing anything** |
-| `--only <id...>` | limit execution to specific achievements |
-| `--target <id=level>` | override target levels for this run |
-| `--allow-policy-risks` | consent to opt-in achievements (Galaxy Brain) |
-| `--allow-high-risk` | consent to high-risk achievements (Starstruck) |
-| `--resume [runId]` | resume a pending run (latest resumable if no id) |
-| `--status` | show the latest run instead of executing |
+| option                | purpose                                                       |
+| --------------------- | ------------------------------------------------------------- |
+| `--dry-run`           | validate and print the actions **without executing anything** |
+| `--only <id...>`      | limit execution to specific achievements                      |
+| `--target <id=level>` | override target levels for this run                           |
+| `--allow-high-risk`   | consent to high-risk achievements                             |
+| `--resume [runId]`    | resume a pending run (latest resumable if no id)              |
+| `--status`            | show the latest run instead of executing                      |
 
 `run` without `--target` reuses the targets from your last `gh-forge plan`, so
 `plan` → `run` executes exactly what you previewed. An explicit `--target` on
@@ -138,7 +137,7 @@ runs can be continued with `gh-forge run --resume`.
 ### `gh-forge achievements` / `progress` / `config`
 
 - `achievements list` — the whole catalogue with policy risk per achievement.
-- `achievements show <id>` — details, requirements, tiers, and *provenance*
+- `achievements show <id>` — details, requirements, tiers, and _provenance_
   (where the requirement comes from and when it was verified).
 - `progress` (no arguments) — shows the full reference table: every achievement
   (id + name) with your recorded level (`0` = none). Run this first to learn
@@ -156,14 +155,12 @@ runs can be continued with `gh-forge run --resume`.
 
 Every action is tagged with a risk level:
 
-| risk | what it means | consent required |
-|---|---|---|
-| `safe` | normal activity on repositories/PRs you own | none |
-| `opt-in` | multi-account coordination (Galaxy Brain) | `--allow-policy-risks` |
-| `high-risk` | automated starring (Starstruck) — flagged in GitHub's AUP | `--allow-policy-risks` **and** `--allow-high-risk` |
+| risk        | what it means                                             | consent required    |
+| ----------- | --------------------------------------------------------- | ------------------- |
+| `safe`      | normal activity on repositories/PRs you own               | none                |
+| `high-risk` | automated starring (Starstruck) — flagged in GitHub's AUP | `--allow-high-risk` |
 
-`--yes` skips interactive prompts but is **never** a consent flag. Actions
-missing consent are marked `skipped`, never executed. Every opt-in/high-risk
+Actions missing consent are marked `skipped`, never executed. Every high-risk
 run prints a warning banner quoting GitHub's Acceptable Use Policies and writes
 an entry to `~/.gh-forge/state/audit.log`. See
 [`docs/SECURITY.md`](docs/SECURITY.md).

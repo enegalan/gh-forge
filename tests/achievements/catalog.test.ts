@@ -6,8 +6,6 @@ import {
   catalogIds,
   automatableCatalogEntries,
   tiersFromThresholds,
-  CATALOG_VERIFIED_AT,
-  COMMUNITY_SOURCE_URL,
 } from "../../src/achievements/catalog.js";
 
 describe("catalog", () => {
@@ -17,21 +15,24 @@ describe("catalog", () => {
 
   it("each entry carries a policy risk", () => {
     for (const entry of ACHIEVEMENT_CATALOG) {
-      expect(["safe", "opt-in", "high-risk"]).toContain(entry.policyRisk);
+      expect(["safe", "high-risk"]).toContain(entry.policyRisk);
     }
   });
 
   it("marks the 6 automatable entries", () => {
-    const expected = ["quickdraw", "pull-shark", "yolo", "pair-extraordinaire", "galaxy-brain", "starstruck"].sort();
+    const expected = [
+      "quickdraw",
+      "pull-shark",
+      "yolo",
+      "pair-extraordinaire",
+      "galaxy-brain",
+      "starstruck",
+    ].sort();
     expect(
       automatableCatalogEntries()
         .map((entry) => entry.id)
         .sort(),
     ).toEqual(expected);
-  });
-
-  it("classifies galaxy-brain as opt-in", () => {
-    expect(findCatalogEntry("galaxy-brain")?.policyRisk).toBe("opt-in");
   });
 
   it("classifies starstruck as high-risk", () => {
@@ -42,11 +43,6 @@ describe("catalog", () => {
     for (const entry of automatableCatalogEntries()) {
       expect(entry.tiers.length).toBeGreaterThan(0);
     }
-  });
-
-  it("verification date matches the documented pull request date", () => {
-    expect(CATALOG_VERIFIED_AT).toBe("2026-09-16");
-    expect(COMMUNITY_SOURCE_URL).toMatch(/github\.com/);
   });
 
   it("findCatalogEntry returns undefined for unknown ids", () => {

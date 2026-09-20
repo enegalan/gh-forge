@@ -1,14 +1,23 @@
 import { createHash } from "node:crypto";
 
+/**
+ * Computes the SHA-256 hash of a string.
+ *
+ * @param input - The input.
+ * @returns The SHA-256 hash.
+ */
 export function sha256Hex(input: string): string {
   return createHash("sha256").update(input, "utf8").digest("hex");
 }
 
 /**
- * Deterministic, content addressed key for a planned action.
+ * A deterministic, content addressed key for a planned action.
  *
  * Two planner runs that describe the same logical action must produce the same
  * key; this is what makes `gh-forge run` idempotent and resumable.
+ *
+ * @param parts - The parts.
+ * @returns The action key.
  */
 export function actionKey(parts: {
   achievementId: string;
@@ -21,6 +30,12 @@ export function actionKey(parts: {
   return sha256Hex(material).slice(0, 16);
 }
 
+/**
+ * Stable stringifies a value.
+ *
+ * @param value - The value.
+ * @returns The stable stringified value.
+ */
 export function stableStringify(value: unknown): string {
   if (value === null || typeof value !== "object") return JSON.stringify(value) ?? "null";
   if (Array.isArray(value)) return `[${value.map(stableStringify).join(",")}]`;

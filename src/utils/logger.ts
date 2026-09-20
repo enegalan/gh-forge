@@ -1,7 +1,13 @@
 import { redactSecrets } from "./redact.js";
 
+/**
+ * The log level.
+ */
 export type LogLevel = "debug" | "info" | "warn" | "error";
 
+/**
+ * The level weight.
+ */
 const LEVEL_WEIGHT: Record<LogLevel, number> = {
   debug: 10,
   info: 20,
@@ -9,6 +15,9 @@ const LEVEL_WEIGHT: Record<LogLevel, number> = {
   error: 40,
 };
 
+/**
+ * The logger.
+ */
 export interface Logger {
   debug(message: string): void;
   info(message: string): void;
@@ -17,13 +26,21 @@ export interface Logger {
   child(prefix: string): Logger;
 }
 
+/**
+ * The logger options.
+ */
 export interface LoggerOptions {
   level?: LogLevel;
-  /** Data stream (stdout) is reserved for machine readable output. */
   stream?: NodeJS.WritableStream;
   prefix?: string;
 }
 
+/**
+ * Creates a logger.
+ *
+ * @param options - The options.
+ * @returns The logger.
+ */
 export function createLogger(options: LoggerOptions = {}): Logger {
   const level = options.level ?? "info";
   const stream = options.stream ?? process.stderr;
@@ -39,11 +56,15 @@ export function createLogger(options: LoggerOptions = {}): Logger {
     info: (message) => log("info", message),
     warn: (message) => log("warn", message),
     error: (message) => log("error", message),
-    child: (childPrefix) =>
-      createLogger({ level, stream, prefix: `${prefix}${childPrefix}` }),
+    child: (childPrefix) => createLogger({ level, stream, prefix: `${prefix}${childPrefix}` }),
   };
 }
 
+/**
+ * Creates a silent logger.
+ *
+ * @returns The silent logger.
+ */
 export function createSilentLogger(): Logger {
   const logger: Logger = {
     debug: () => {},

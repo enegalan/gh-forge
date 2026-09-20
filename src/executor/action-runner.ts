@@ -4,6 +4,9 @@ import type { Logger } from "../utils/logger.js";
 import { ExecutionError, errorMessage } from "../utils/errors.js";
 import { GitHubHttpError } from "../github/http/http-errors.js";
 
+/**
+ * A repository target.
+ */
 export interface RepositoryTarget {
   owner: string;
   repo: string;
@@ -11,6 +14,9 @@ export interface RepositoryTarget {
   created: boolean;
 }
 
+/**
+ * An action run input.
+ */
 export interface ActionRunInput {
   context: AchievementContext;
   action: PlannedAction;
@@ -23,6 +29,9 @@ export interface ActionRunInput {
   sleep?: (ms: number) => Promise<void>;
 }
 
+/**
+ * An action outcome.
+ */
 export interface ActionOutcome {
   status: "done" | "skipped" | "failed" | "would-run";
   message: string;
@@ -30,22 +39,53 @@ export interface ActionOutcome {
   result?: Record<string, unknown>;
 }
 
+/**
+ * The marker for an action.
+ *
+ * @param key - The key.
+ * @returns The marker.
+ */
 export function markerFor(key: string): string {
   return `gh-forge:${key}`;
 }
 
+/**
+ * The HTML marker.
+ *
+ * @param marker - The marker.
+ * @returns The HTML marker.
+ */
 export function markerHtml(marker: string): string {
   return `<!-- ${marker} -->`;
 }
 
+/**
+ * The primary achievement.
+ *
+ * @param action - The action.
+ * @returns The primary achievement.
+ */
 function primaryAchievement(action: PlannedAction): string {
   return action.achievementIds[0] ?? "action";
 }
 
+/**
+ * The branch name for an action.
+ *
+ * @param action - The action.
+ * @param branchPrefix - The branch prefix.
+ * @returns The branch name.
+ */
 export function branchNameFor(action: PlannedAction, branchPrefix: string): string {
   return `${branchPrefix}/${primaryAchievement(action)}/${action.key}`;
 }
 
+/**
+ * Ensures a repository exists.
+ *
+ * @param input - The input.
+ * @returns The repository target.
+ */
 export async function ensureRepository(input: ActionRunInput): Promise<RepositoryTarget> {
   const { context } = input;
   const { owner, name, visibility, discussions } = context.sandbox;
@@ -55,8 +95,10 @@ export async function ensureRepository(input: ActionRunInput): Promise<Repositor
   }
   if (owner.toLowerCase() !== context.mainAccount.username.toLowerCase()) {
     throw new ExecutionError(
-      `Repository ${owner}/${name} does not exist and GAF only creates repositories inside the main account's namespace (${context.mainAccount.username}).`,
-      ["Create the repository yourself, or point `repositories.sandbox.owner` at your main account."],
+      `Repository ${owner}/${name} does not exist and GitHub Achievement Forge only creates repositories inside the main account's namespace (${context.mainAccount.username}).`,
+      [
+        "Create the repository yourself, or point `repositories.sandbox.owner` at your main account.",
+      ],
     );
   }
   const created = await context.github.repositories.create({
@@ -69,6 +111,12 @@ export async function ensureRepository(input: ActionRunInput): Promise<Repositor
   return { owner, repo: created.name, defaultBranch: created.default_branch, created: true };
 }
 
+/**
+ * Runs an action.
+ *
+ * @param input - The input.
+ * @returns The action outcome.
+ */
 export async function runAction(input: ActionRunInput): Promise<ActionOutcome> {
   if (input.dryRun) {
     return { status: "would-run", message: `[dry-run] ${input.action.description}` };
@@ -86,6 +134,12 @@ export async function runAction(input: ActionRunInput): Promise<ActionOutcome> {
   }
 }
 
+/**
+ * Runs a close issue fast action.
+ *
+ * @param input - The input.
+ * @returns The action outcome.
+ */
 async function runCloseIssueFast(input: ActionRunInput): Promise<ActionOutcome> {
   const { context, action } = input;
   const marker = markerFor(action.key);
@@ -133,19 +187,31 @@ async function runCloseIssueFast(input: ActionRunInput): Promise<ActionOutcome> 
   };
 }
 
+/**
+ * Builds a commit message.
+ *
+ * @param input - The input.
+ * @param coAuthored - Whether the commit is co-authored.
+ * @param marker - The marker.
+ * @returns The commit message.
+ */
 function buildCommitMessage(input: ActionRunInput, coAuthored: boolean, marker: string): string {
   const lines = [`gh-forge: ${input.action.description} [${input.action.key}]`];
   if (coAuthored) {
     const helper = input.context.accounts.filter((account) => account.role === "helper")[0];
     if (helper === undefined) {
-      throw new ExecutionError("Pair Extraordinaire needs a helper account to co-author the commit.");
+      throw new ExecutionError(
+        "Pair Extraordinaire needs a helper account to co-author the commit.",
+      );
     }
     const capabilities = input.context.accountCapabilities.get(helper.id);
     const email = capabilities?.commitEmail ?? helper.commitEmail;
     if (email === undefined || email === "") {
       throw new ExecutionError(
         `No verified commit email is known for helper "${helper.id}", so GitHub would not credit it as co-author.`,
-        [`Run \`gh-forge accounts set-email ${helper.id} <email>\` with an email verified on that account.`],
+        [
+          `Run \`gh-forge accounts set-email ${helper.id} <email>\` with an email verified on that account.`,
+        ],
       );
     }
     lines.push("", `Co-authored-by: ${helper.username} <${email}>`);
@@ -154,13 +220,32 @@ function buildCommitMessage(input: ActionRunInput, coAuthored: boolean, marker: 
   return lines.join("\n");
 }
 
+/**
+ * The default merge poll interval.
+ */
 const DEFAULT_MERGE_POLL_INTERVAL_MS = 2_000;
+
+/**
+ * The default merge max attempts.
+ */
 const DEFAULT_MERGE_MAX_ATTEMPTS = 15;
 
+/**
+ * The default sleep function.
+ *
+ * @param ms - The milliseconds.
+ * @returns The promise.
+ */
 function defaultSleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
+/**
+ * Checks if an error is not mergeable.
+ *
+ * @param error - The error.
+ * @returns True if the error is not mergeable, false otherwise.
+ */
 function isNotMergeableError(error: unknown): boolean {
   return (
     error instanceof GitHubHttpError &&
@@ -169,6 +254,9 @@ function isNotMergeableError(error: unknown): boolean {
   );
 }
 
+/**
+ * A merge target.
+ */
 interface MergeTarget {
   owner: string;
   repo: string;
@@ -185,7 +273,10 @@ interface MergeTarget {
  * GitHub reports it as mergeable and retry transient merge failures, instead of
  * failing the action on the first attempt.
  */
-async function mergePullRequest(input: ActionRunInput, target: MergeTarget): Promise<ActionOutcome> {
+async function mergePullRequest(
+  input: ActionRunInput,
+  target: MergeTarget,
+): Promise<ActionOutcome> {
   const { context, action } = input;
   const interval = input.mergePollIntervalMs ?? DEFAULT_MERGE_POLL_INTERVAL_MS;
   const maxAttempts = Math.max(1, input.mergeMaxAttempts ?? DEFAULT_MERGE_MAX_ATTEMPTS);
@@ -200,7 +291,11 @@ async function mergePullRequest(input: ActionRunInput, target: MergeTarget): Pro
   let lastError = "Pull Request is not mergeable";
 
   for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
-    const current = await context.github.pullRequests.get(target.owner, target.repo, target.pullNumber);
+    const current = await context.github.pullRequests.get(
+      target.owner,
+      target.repo,
+      target.pullNumber,
+    );
     if (current === null) {
       return {
         status: "failed",
@@ -267,6 +362,12 @@ async function mergePullRequest(input: ActionRunInput, target: MergeTarget): Pro
   };
 }
 
+/**
+ * Runs a merged pull request action.
+ *
+ * @param input - The input.
+ * @returns The action outcome.
+ */
 async function runMergedPullRequest(input: ActionRunInput): Promise<ActionOutcome> {
   const { context, action } = input;
   const marker = markerFor(action.key);
@@ -275,7 +376,9 @@ async function runMergedPullRequest(input: ActionRunInput): Promise<ActionOutcom
   const branch = branchNameFor(action, input.branchPrefix);
   const head = `${owner}:${branch}`;
 
-  const existing = await context.github.pullRequests.findByHead(owner, repo, head).catch(() => null);
+  const existing = await context.github.pullRequests
+    .findByHead(owner, repo, head)
+    .catch(() => null);
   if (existing !== null && existing.merged) {
     return {
       status: "skipped",
@@ -298,7 +401,9 @@ async function runMergedPullRequest(input: ActionRunInput): Promise<ActionOutcom
     if (branchSha === null) {
       const baseSha = await context.github.repositories.getBranchSha(owner, repo, defaultBranch);
       if (baseSha === null) {
-        throw new ExecutionError(`Could not resolve the base branch ${defaultBranch} of ${owner}/${repo}`);
+        throw new ExecutionError(
+          `Could not resolve the base branch ${defaultBranch} of ${owner}/${repo}`,
+        );
       }
       await context.github.repositories.createBranch(owner, repo, branch, baseSha);
     }
@@ -342,7 +447,13 @@ async function runMergedPullRequest(input: ActionRunInput): Promise<ActionOutcom
     return {
       status: "skipped",
       message: `Pull request #${pull.number} for ${action.key} is already merged.`,
-      ref: { type: "pull-request", marker, repository: `${owner}/${repo}`, branch, number: pull.number },
+      ref: {
+        type: "pull-request",
+        marker,
+        repository: `${owner}/${repo}`,
+        branch,
+        number: pull.number,
+      },
     };
   }
 
@@ -356,9 +467,17 @@ async function runMergedPullRequest(input: ActionRunInput): Promise<ActionOutcom
   });
 }
 
-function pickDiscussionCategory(
-  categories: Array<{ id: string; name: string; slug: string }>,
-): { id: string; name: string; slug: string } {
+/**
+ * Picks a discussion category.
+ *
+ * @param categories - The categories.
+ * @returns The discussion category.
+ */
+function pickDiscussionCategory(categories: Array<{ id: string; name: string; slug: string }>): {
+  id: string;
+  name: string;
+  slug: string;
+} {
   const preferred = categories.find((category) => /^(general|q&a|questions)$/i.test(category.name));
   const chosen = preferred ?? categories[0];
   if (chosen === undefined) {
@@ -368,6 +487,13 @@ function pickDiscussionCategory(
   }
   return chosen;
 }
+
+/**
+ * Runs an accepted discussion answer action.
+ *
+ * @param input - The input.
+ * @returns The action outcome.
+ */
 async function runAcceptedDiscussionAnswer(input: ActionRunInput): Promise<ActionOutcome> {
   const { context, action } = input;
   const marker = markerFor(action.key);
@@ -375,17 +501,18 @@ async function runAcceptedDiscussionAnswer(input: ActionRunInput): Promise<Actio
   const { owner, repo } = repository;
   const helper = context.accounts.filter((account) => account.role === "helper")[0];
   if (helper === undefined) {
-    throw new ExecutionError("Galaxy Brain needs a helper account to create and accept the discussion.");
+    throw new ExecutionError(
+      "Galaxy Brain needs a helper account to create and accept the discussion.",
+    );
   }
   const helperClient = context.clientFor(helper.id);
   const main = context.mainAccount;
 
   const info = await context.github.discussions.getRepositoryInfo(owner, repo);
   if (!info.hasDiscussionsEnabled || info.repositoryId === "") {
-    throw new ExecutionError(
-      `Discussions are not enabled on ${owner}/${repo}.`,
-      ["Enable Discussions in the repository settings; GAF never changes repository settings automatically."],
-    );
+    throw new ExecutionError(`Discussions are not enabled on ${owner}/${repo}.`, [
+      "Enable Discussions in the repository settings; GitHub Achievement Forge never changes repository settings automatically.",
+    ]);
   }
   const category = pickDiscussionCategory(info.categories);
 
@@ -397,7 +524,12 @@ async function runAcceptedDiscussionAnswer(input: ActionRunInput): Promise<Actio
       return {
         status: "skipped",
         message: `Discussion #${detailed.number} already has an accepted answer from ${main.username}.`,
-        ref: { type: "discussion", marker, repository: `${owner}/${repo}`, discussionId: detailed.id },
+        ref: {
+          type: "discussion",
+          marker,
+          repository: `${owner}/${repo}`,
+          discussionId: detailed.id,
+        },
       };
     }
   }
@@ -443,6 +575,12 @@ async function runAcceptedDiscussionAnswer(input: ActionRunInput): Promise<Actio
   };
 }
 
+/**
+ * Runs a repository star action.
+ *
+ * @param input - The input.
+ * @returns The action outcome.
+ */
 async function runRepositoryStar(input: ActionRunInput): Promise<ActionOutcome> {
   const { context, action } = input;
   const marker = markerFor(action.key);
@@ -455,7 +593,7 @@ async function runRepositoryStar(input: ActionRunInput): Promise<ActionOutcome> 
     return {
       status: "failed",
       message:
-        `No helper account available for star unit #${unitIndex + 1}. GAF needs ${unitIndex + 1} accounts ` +
+        `No helper account available for star unit #${unitIndex + 1}. GitHub Achievement Forge needs ${unitIndex + 1} accounts ` +
         `that can star ${owner}/${repo}; it never creates accounts and never uses accounts owned by others.`,
     };
   }

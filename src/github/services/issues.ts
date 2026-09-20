@@ -1,6 +1,9 @@
 import type { HttpClient } from "../http/http-client.js";
 import type { GitHubIssue } from "../types.js";
 
+/**
+ * The create issue input.
+ */
 export interface CreateIssueInput {
   owner: string;
   repo: string;
@@ -8,13 +11,30 @@ export interface CreateIssueInput {
   body: string;
 }
 
+/**
+ * The issue service.
+ */
 export class IssueService {
+  /**
+   * The HTTP client.
+   */
   private readonly http: HttpClient;
 
+  /**
+   * Creates a new issue service.
+   *
+   * @param http - The HTTP client.
+   */
   constructor(http: HttpClient) {
     this.http = http;
   }
 
+  /**
+   * Creates an issue.
+   *
+   * @param input - The input.
+   * @returns The created issue.
+   */
   async create(input: CreateIssueInput): Promise<GitHubIssue> {
     const response = await this.http.request<GitHubIssue>({
       method: "POST",
@@ -24,6 +44,14 @@ export class IssueService {
     return response.data;
   }
 
+  /**
+   * Gets an issue.
+   *
+   * @param owner - The owner.
+   * @param repo - The repository.
+   * @param issueNumber - The issue number.
+   * @returns The issue.
+   */
   async get(owner: string, repo: string, issueNumber: number): Promise<GitHubIssue | null> {
     const response = await this.http.requestOptional<GitHubIssue>({
       path: `/repos/${owner}/${repo}/issues/${issueNumber}`,
@@ -31,7 +59,14 @@ export class IssueService {
     return response === null ? null : response.data;
   }
 
-  /** Closing an issue (and PRs are issues) is what Quickdraw measures. */
+  /**
+   * Closes an issue.
+   *
+   * @param owner - The owner.
+   * @param repo - The repository.
+   * @param issueNumber - The issue number.
+   * @returns The closed issue.
+   */
   async close(owner: string, repo: string, issueNumber: number): Promise<GitHubIssue> {
     const response = await this.http.request<GitHubIssue>({
       method: "PATCH",
@@ -42,8 +77,12 @@ export class IssueService {
   }
 
   /**
-   * Best-effort remote idempotency: find an issue that carries a GAF marker.
-   * The search API is rate limited, so callers must tolerate `null`.
+   * Finds an issue by marker.
+   *
+   * @param owner - The owner.
+   * @param repo - The repository.
+   * @param marker - The marker.
+   * @returns The issue.
    */
   async findByMarker(owner: string, repo: string, marker: string): Promise<GitHubIssue | null> {
     const response = await this.http.requestOptional<{ items: GitHubIssue[] }>({

@@ -1,6 +1,6 @@
 # gh-forge design
 
-`gh-forge` (GitHub Achievement Forge, "GAF") plans and executes real GitHub
+`gh-forge` (GitHub Achievement Forge) plans and executes real GitHub
 actions that earn GitHub Achievements, using accounts you own. It is built to
 be **transparent**, **idempotent**, and **policy-safe**.
 
@@ -50,14 +50,12 @@ tests/           vitest suite
 
 ## The policy model
 
-Each action is classified `safe | opt-in | high-risk`:
+Each action is classified `safe | high-risk`:
 
 - `safe` — runs on `gh-forge run` with no extra flags (but still idempotent).
-- `opt-in` — requires `--allow-policy-risks` (or `policy.allowOptInAchievements: true`).
 - `high-risk` — additionally requires `--allow-high-risk`.
 
-`--yes` skips interactive prompts but **never** acts as a policy flag. An
-action whose policy gate is not met is marked `skipped` in the run state and
+An action whose policy gate is not met is marked `skipped` in the run state and
 reported; it is never mutated. See `docs/SECURITY.md`.
 
 ## Idempotency and remote state

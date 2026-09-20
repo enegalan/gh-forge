@@ -64,8 +64,7 @@ describe("describeScraped", () => {
 
 describe("scanProfile", () => {
   it("uses the injected fetch implementation", async () => {
-    const fetchImpl = async (): Promise<Response> =>
-      new Response(PROFILE_HTML, { status: 200 });
+    const fetchImpl = async (): Promise<Response> => new Response(PROFILE_HTML, { status: 200 });
     const result = await scanProfile("octocat", { fetchImpl });
     expect(result.username).toBe("octocat");
     expect(result.achievements.length).toBe(3);
@@ -73,8 +72,7 @@ describe("scanProfile", () => {
   });
 
   it("warns when the profile cannot be reached", async () => {
-    const fetchImpl = async (): Promise<Response> =>
-      new Response("rate limited", { status: 429 });
+    const fetchImpl = async (): Promise<Response> => new Response("rate limited", { status: 429 });
     const result = await scanProfile("octocat", { fetchImpl });
     expect(result.achievements).toEqual([]);
     expect(result.warnings.some((warning) => warning.includes("429"))).toBe(true);

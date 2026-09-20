@@ -9,15 +9,25 @@ import { requireCatalogEntry } from "../catalog.js";
  *   main opens a pull request whose commit carries a
  *   `Co-authored-by: <helper name> <helper email>` trailer, then merges it.
  *
- * `accountsRequired` is always 2 (never derived from the tier thresholds):
+ * `accountsRequired` is always 2:
  * one author plus one co-author, and the same pair can earn every tier by
  * repeating the action.
  */
 export class PairExtraordinaireAchievement extends BaseAchievement {
+  /**
+   * Creates a new Pair Extraordinaire achievement.
+   */
   constructor() {
     super(requireCatalogEntry("pair-extraordinaire"));
   }
 
+  /**
+   * Gets the requirements for the achievement.
+   *
+   * @param targetTier - The target tier.
+   * @param context - The achievement context.
+   * @returns The requirements.
+   */
   override getRequirements(targetTier: number, context: AchievementContext): Requirement[] {
     const units = this.unitsFor(targetTier, this.currentLevel(context));
     if (units === 0) return [];
@@ -39,6 +49,12 @@ export class PairExtraordinaireAchievement extends BaseAchievement {
     ];
   }
 
+  /**
+   * Validates the achievement.
+   *
+   * @param context - The achievement context.
+   * @returns The validation result.
+   */
   override async validate(context: AchievementContext): Promise<ValidationResult> {
     const base = await super.validate(context);
     const helpers = helpersOf(context);
@@ -55,7 +71,7 @@ export class PairExtraordinaireAchievement extends BaseAchievement {
       base.issues.push(`The helper account "${helper.id}" is not authenticated.`);
     } else if (capabilities !== undefined && !capabilities.canAttributeCoAuthoredCommit) {
       base.issues.push(
-        `GAF does not know a verified commit email for helper "${helper.id}", so GitHub would not credit it as co-author. Run \`gh-forge accounts set-email ${helper.id} <email>\`.`,
+        `GitHub Achievement Forge does not know a verified commit email for helper "${helper.id}", so GitHub would not credit it as co-author. Run \`gh-forge accounts set-email ${helper.id} <email>\`.`,
       );
     }
     base.ok = base.issues.length === 0;

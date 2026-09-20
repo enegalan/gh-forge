@@ -5,13 +5,20 @@ import { Command } from "commander";
 import { pathsFor, type GlobalCliOptions } from "./context.js";
 import { renderError } from "./ui/format.js";
 import { initCommand } from "./commands/init.js";
-import { accountsAdd, accountsList, accountsTest, accountsRemove, accountsSetEmail } from "./commands/accounts.js";
+import {
+  accountsAdd,
+  accountsList,
+  accountsTest,
+  accountsRemove,
+  accountsSetEmail,
+} from "./commands/accounts.js";
 import { planCommand } from "./commands/plan.js";
 import { runCommand } from "./commands/run.js";
 import { statusCommand } from "./commands/status.js";
 import { configGetCommand, configSetCommand, configKeysCommand } from "./commands/config.js";
 import { achievementsListCommand, achievementsShowCommand } from "./commands/achievements.js";
 import { progressCommand } from "./commands/progress.js";
+import type { AccountRole } from "../accounts/account.js";
 
 const require = createRequire(import.meta.url);
 const { version } = require("../../package.json") as { version: string };
@@ -20,11 +27,18 @@ const program = new Command();
 
 program
   .name("gh-forge")
-  .description("GitHub Achievement Forge (GAF) — plan and execute real GitHub actions to earn achievements using accounts you own.")
+  .description(
+    "GitHub Achievement Forge — plan and execute real GitHub actions to earn achievements using accounts you own.",
+  )
   .version(version)
   .option("--verbose", "enable debug logging")
   .option("--quiet", "suppress non-error output");
 
+/**
+ * The global options.
+ *
+ * @returns The global options.
+ */
 function globalOptions(): GlobalCliOptions {
   const opts = program.opts();
   return {
@@ -33,7 +47,11 @@ function globalOptions(): GlobalCliOptions {
   };
 }
 
-// ─── init ────────────────────────────────────────────────────────────────────
+/**
+ * The init command.
+ *
+ * @param opts - The options.
+ */
 program
   .command("init")
   .description("Create or overwrite the gh-forge configuration file.")
@@ -56,7 +74,11 @@ program
     }
   });
 
-// ─── accounts ────────────────────────────────────────────────────────────────
+/**
+ * The accounts command.
+ *
+ * @returns The accounts command.
+ */
 const accountsCmd = program
   .command("accounts")
   .description("Manage GitHub accounts used by gh-forge.");
@@ -64,7 +86,7 @@ const accountsCmd = program
 accountsCmd
   .command("add <id>")
   .description("Add or update an account.")
-  .option("--role <main|helper>", "account role (defaults to main for id \"main\")")
+  .option("--role <main|helper>", 'account role (defaults to main for id "main")')
   .option("--username <login>", "GitHub username (required)")
   .option("--auth <method>", "authentication method: gh, token-command, env", "gh")
   .option("--login <login>", "login hint for gh keychain auth")
@@ -77,7 +99,7 @@ accountsCmd
     try {
       const paths = pathsFor();
       const code = await accountsAdd(paths, id, {
-        role: opts.role as "main" | "helper" | undefined,
+        role: opts.role as AccountRole | undefined,
         username: opts.username as string | undefined,
         auth: opts.auth as "gh" | "token-command" | "env" | undefined,
         login: opts.login as string | undefined,
@@ -151,7 +173,11 @@ accountsCmd
     }
   });
 
-// ─── plan ────────────────────────────────────────────────────────────────────
+/**
+ * The plan command.
+ *
+ * @param opts - The options.
+ */
 program
   .command("plan")
   .description("Plan which actions are needed to reach target achievement levels.")
@@ -176,7 +202,11 @@ program
     }
   });
 
-// ─── run ─────────────────────────────────────────────────────────────────────
+/**
+ * The run command.
+ *
+ * @param opts - The options.
+ */
 program
   .command("run")
   .description("Execute planned actions on GitHub.")
@@ -207,7 +237,11 @@ program
     }
   });
 
-// ─── status ──────────────────────────────────────────────────────────────────
+/**
+ * The status command.
+ *
+ * @param opts - The options.
+ */
 program
   .command("status")
   .description("Show the status of past and current runs.")
@@ -227,7 +261,11 @@ program
     }
   });
 
-// ─── config ──────────────────────────────────────────────────────────────────
+/**
+ * The config command.
+ *
+ * @returns The config command.
+ */
 const configCmd = program
   .command("config")
   .description("Read and write gh-forge configuration.")
@@ -269,7 +307,11 @@ configCmd
     }
   });
 
-// ─── achievements ────────────────────────────────────────────────────────────
+/**
+ * The achievements command.
+ *
+ * @returns The achievements command.
+ */
 const achievementsCmd = program
   .command("achievements")
   .description("List and inspect GitHub achievements.");
@@ -302,7 +344,13 @@ achievementsCmd
     }
   });
 
-// ─── progress ────────────────────────────────────────────────────────────────
+/**
+ * The progress command.
+ *
+ * @param achievementId - The ID of the achievement.
+ * @param level - The level.
+ * @param opts - The options.
+ */
 program
   .command("progress")
   .description("Set or view known achievement progress levels.")
@@ -313,10 +361,15 @@ program
   .action(async (achievementId, level, opts) => {
     try {
       const paths = pathsFor();
-      const code = await progressCommand(paths, achievementId as string | undefined, level as string | undefined, {
-        clear: opts.clear as boolean | undefined,
-        json: opts.json as boolean | undefined,
-      });
+      const code = await progressCommand(
+        paths,
+        achievementId as string | undefined,
+        level as string | undefined,
+        {
+          clear: opts.clear as boolean | undefined,
+          json: opts.json as boolean | undefined,
+        },
+      );
       process.exitCode = code;
     } catch (error) {
       renderError(error);

@@ -1,5 +1,4 @@
 import type { Account } from "../accounts/account.js";
-import type { Config } from "../config/schema.js";
 import type { PlannedAction } from "../domain/action.js";
 import { actionKey } from "../utils/hash.js";
 import type {
@@ -23,14 +22,40 @@ import { ExecutionError } from "../utils/errors.js";
  * `achievement-registry.ts`. Nothing else in the system needs to change.
  */
 export abstract class BaseAchievement implements Achievement {
+  /**
+   * The ID of the achievement.
+   */
   readonly id: string;
+  /**
+   * The name of the achievement.
+   */
   readonly name: string;
+  /**
+   * The description of the achievement.
+   */
   readonly description: string;
+  /**
+   * The policy risk of the achievement.
+   */
   readonly policyRisk: CatalogEntry["policyRisk"];
+  /**
+   * Whether the achievement is automatable.
+   */
   readonly automatable: boolean;
+  /**
+   * The tiers of the achievement.
+   */
   protected readonly tiers: AchievementTier[];
+  /**
+   * The notes of the achievement.
+   */
   protected readonly notes: string[];
 
+  /**
+   * Creates a new base achievement.
+   *
+   * @param entry - The catalog entry.
+   */
   constructor(entry: CatalogEntry) {
     this.id = entry.id;
     this.name = entry.name;
@@ -41,29 +66,66 @@ export abstract class BaseAchievement implements Achievement {
     this.notes = entry.notes;
   }
 
+  /**
+   * The tiers of the achievement.
+   *
+   * @returns The tiers of the achievement.
+   */
   getTiers(): AchievementTier[] {
     return this.tiers.map((tier) => ({ ...tier }));
   }
 
+  /**
+   * The tier of the achievement for a given level.
+   *
+   * @param level - The level.
+   * @returns The tier of the achievement.
+   */
   tier(level: number): AchievementTier | undefined {
     return this.tiers.find((tier) => tier.level === level);
   }
 
+  /**
+   * The requirement for the achievement for a given level.
+   *
+   * @param level - The level.
+   * @returns The requirement for the achievement.
+   */
   requirementForLevel(level: number): number {
     if (level <= 0) return 0;
     const tier = this.tier(level) ?? this.tiers[this.tiers.length - 1];
     return tier?.requirement ?? 0;
   }
 
+  /**
+   * The maximum level of the achievement.
+   *
+   * @returns The maximum level of the achievement.
+   */
   maxLevel(): number {
     return this.tiers.length;
   }
 
-  /** Units still needed to move from the earned level to the target level. */
+  /**
+   * The units still needed to move from the earned level to the target level.
+   *
+   * @param targetTier - The target tier.
+   * @param currentLevel - The current level.
+   * @returns The units still needed to move from the earned level to the target level.
+   */
   unitsFor(targetTier: number, currentLevel: number): number {
-    return Math.max(0, this.requirementForLevel(targetTier) - this.requirementForLevel(currentLevel));
+    return Math.max(
+      0,
+      this.requirementForLevel(targetTier) - this.requirementForLevel(currentLevel),
+    );
   }
 
+  /**
+   * The current level of the achievement.
+   *
+   * @param context - The achievement context.
+   * @returns The current level of the achievement.
+   */
   currentLevel(context: AchievementContext): number {
     return context.knownProgress[this.id] ?? 0;
   }
@@ -72,12 +134,22 @@ export abstract class BaseAchievement implements Achievement {
    * Expands this achievement's requirements into concrete, keyed actions.
    * `gh-forge run --only <id>` uses this path; the global planner uses
    * `getRequirements()` and merges requirements ACROSS achievements.
+   *
+   * @param targetTier - The target tier.
+   * @param context - The achievement context.
+   * @returns The actions for the achievement.
    */
   buildActions(targetTier: number, context: AchievementContext): PlannedAction[] {
     const requirements = this.getRequirements(targetTier, context);
     return requirements.flatMap((requirement) => this.actionsForRequirement(requirement));
   }
 
+  /**
+   * The actions for a given requirement.
+   *
+   * @param requirement - The requirement.
+   * @returns The actions for the requirement.
+   */
   protected actionsForRequirement(requirement: Requirement): PlannedAction[] {
     const actions: PlannedAction[] = [];
     for (let index = 0; index < requirement.count; index += 1) {
@@ -96,14 +168,19 @@ export abstract class BaseAchievement implements Achievement {
     return actions;
   }
 
-  /** Default validation: every requirement needs enough distinct accounts. */
+  /**
+   * Validates the achievement.
+   *
+   * @param context - The achievement context.
+   * @returns The validation result.
+   */
   async validate(context: AchievementContext): Promise<ValidationResult> {
     const issues: string[] = [];
     const warnings: string[] = [];
     const target = context.config.targets[this.id] ?? 0;
 
     if (!this.automatable) {
-      issues.push(`${this.name} cannot be automated by GAF.`);
+      issues.push(`${this.name} cannot be automated by GitHub Achievement Forge.`);
     }
     if (this.tiers.length === 0) {
       issues.push(`${this.name} has no verified requirements, so it cannot be planned.`);
@@ -131,6 +208,10 @@ export abstract class BaseAchievement implements Achievement {
    * Executes this achievement on its own (`gh-forge run --only <id>`). The
    * executor receives the actions and is responsible for idempotency, pacing and
    * persistence.
+   *
+   * @param context - The achievement context.
+   * @param targetTier - The target tier.
+   * @returns The execution result.
    */
   async execute(context: AchievementContext, targetTier: number): Promise<ExecutionResult> {
     if (!this.automatable) {
@@ -149,27 +230,33 @@ export abstract class BaseAchievement implements Achievement {
     return context.executor.runActions(context, this.id, actions);
   }
 
+  /**
+   * Describes the progress of the achievement.
+   *
+   * @param targetTier - The target tier.
+   * @param currentLevel - The current level.
+   * @returns The description of the progress of the achievement.
+   */
   protected describeProgress(targetTier: number, currentLevel: number): string {
     return `${levelToTierName(currentLevel)} -> ${levelToTierName(targetTier)}`;
   }
 
+  /**
+   * Gets the requirements for the achievement.
+   *
+   * @param targetTier - The target tier.
+   * @param context - The achievement context.
+   * @returns The requirements for the achievement.
+   */
   abstract getRequirements(targetTier: number, context: AchievementContext): Requirement[];
 }
 
+/**
+ * The helpers of the achievement.
+ *
+ * @param context - The achievement context.
+ * @returns The helpers of the achievement.
+ */
 export function helpersOf(context: AchievementContext): Account[] {
   return context.accounts.filter((account) => account.role === "helper");
-}
-
-export function mainOf(context: AchievementContext): Account {
-  const main = context.accounts.find((account) => account.role === "main");
-  if (main === undefined) {
-    throw new ExecutionError("No main account is configured", [
-      "Run `gh-forge accounts add main --role main --username <login>`.",
-    ]);
-  }
-  return main;
-}
-
-export function targetLevelFor(config: Config, achievementId: string): number {
-  return config.targets[achievementId] ?? 0;
 }

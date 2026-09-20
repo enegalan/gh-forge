@@ -37,6 +37,9 @@ export const REQUESTS_BY_KIND: Record<ActionKind, number> = {
  */
 export const MIN_REQUEST_MS = 120;
 
+/**
+ * A time estimate.
+ */
 export interface TimeEstimate {
   actionCount: number;
   seconds: number;
@@ -44,11 +47,25 @@ export interface TimeEstimate {
   byKind: Partial<Record<ActionKind, number>>;
 }
 
+/**
+ * Estimates the seconds for an action.
+ *
+ * @param kind - The kind.
+ * @param minIntervalMs - The minimum interval milliseconds.
+ * @returns The seconds for an action.
+ */
 export function estimateActionSeconds(kind: ActionKind, minIntervalMs: number): number {
   const perRequestMs = Math.max(minIntervalMs, MIN_REQUEST_MS);
   return (REQUESTS_BY_KIND[kind] * perRequestMs) / 1000;
 }
 
+/**
+ * Estimates the actions.
+ *
+ * @param actions - The actions.
+ * @param minIntervalMs - The minimum interval milliseconds.
+ * @returns The time estimate.
+ */
 export function estimateActions(
   actions: ReadonlyArray<{ kind: ActionKind }>,
   minIntervalMs: number,
@@ -63,7 +80,12 @@ export function estimateActions(
   return { actionCount: actions.length, seconds, byKind };
 }
 
-/** Compact human duration: `42s`, `1m 30s`, `4h 3m`. */
+/**
+ * Formats a duration.
+ *
+ * @param seconds - The seconds.
+ * @returns The formatted duration.
+ */
 export function formatDuration(seconds: number): string {
   if (!Number.isFinite(seconds) || seconds <= 0) return "0s";
   const total = Math.round(seconds);

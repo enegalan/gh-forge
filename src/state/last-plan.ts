@@ -9,15 +9,32 @@ import { readJson, writeJsonAtomic } from "../utils/fs-atomic.js";
  * user just saw instead of silently re-planning from empty config targets.
  * Explicit `--target` flags on `run` always win over this file.
  */
+
+/**
+ * The last plan version.
+ */
 const LAST_PLAN_VERSION = 1;
 
-interface LastPlanFile {
+/**
+ * The last plan file.
+ */
+export interface LastPlanFile {
   version: typeof LAST_PLAN_VERSION;
   updatedAt: string;
   targets: Record<string, number>;
 }
 
-export async function saveLastPlanTargets(paths: GafPaths, targets: Record<string, number>): Promise<void> {
+/**
+ * Saves the last plan targets.
+ *
+ * @param paths - The paths.
+ * @param targets - The targets.
+ * @returns The void.
+ */
+export async function saveLastPlanTargets(
+  paths: GafPaths,
+  targets: Record<string, number>,
+): Promise<void> {
   const file: LastPlanFile = {
     version: LAST_PLAN_VERSION,
     updatedAt: new Date().toISOString(),
@@ -26,7 +43,12 @@ export async function saveLastPlanTargets(paths: GafPaths, targets: Record<strin
   await writeJsonAtomic(paths.planFile, file);
 }
 
-/** Returns the stored targets, or null when no plan has been generated yet. */
+/**
+ * Loads the last plan targets.
+ *
+ * @param paths - The paths.
+ * @returns The stored targets, or null when no plan has been generated yet.
+ */
 export async function loadLastPlanTargets(paths: GafPaths): Promise<Record<string, number> | null> {
   const raw = await readJson<unknown>(paths.planFile);
   if (raw === null || typeof raw !== "object") return null;

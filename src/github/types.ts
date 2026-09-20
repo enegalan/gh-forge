@@ -1,5 +1,6 @@
-/** Minimal, hand written DTOs for the fields GAF actually uses. */
-
+/**
+ * The GitHub user.
+ */
 export interface GitHubUser {
   login: string;
   id: number;
@@ -9,6 +10,9 @@ export interface GitHubUser {
   html_url?: string;
 }
 
+/**
+ * The GitHub email.
+ */
 export interface GitHubEmail {
   email: string;
   primary: boolean;
@@ -16,14 +20,9 @@ export interface GitHubEmail {
   visibility: string | null;
 }
 
-export interface RepositoryPermissions {
-  admin: boolean;
-  maintain?: boolean;
-  push: boolean;
-  triage?: boolean;
-  pull: boolean;
-}
-
+/**
+ * The GitHub repository.
+ */
 export interface GitHubRepository {
   id: number;
   node_id: string;
@@ -37,9 +36,18 @@ export interface GitHubRepository {
   default_branch: string;
   stargazers_count: number;
   html_url: string;
-  permissions?: RepositoryPermissions;
+  permissions: {
+    admin: boolean;
+    maintain?: boolean;
+    push: boolean;
+    triage?: boolean;
+    pull: boolean;
+  };
 }
 
+/**
+ * The GitHub issue.
+ */
 export interface GitHubIssue {
   id: number;
   number: number;
@@ -53,6 +61,9 @@ export interface GitHubIssue {
   user?: { login: string } | null;
 }
 
+/**
+ * The GitHub pull request.
+ */
 export interface GitHubPullRequest {
   id: number;
   number: number;
@@ -70,16 +81,25 @@ export interface GitHubPullRequest {
   mergeable_state?: string;
 }
 
+/**
+ * The GitHub branch protection.
+ */
 export interface GitHubBranchProtection {
   requiresApprovingReviews: boolean;
   requiredApprovingReviewCount: number;
 }
 
+/**
+ * The GitHub ref.
+ */
 export interface GitHubRef {
   ref: string;
   object: { sha: string; type: string };
 }
 
+/**
+ * The GitHub content response.
+ */
 export interface GitHubContentResponse {
   content?: string;
   sha: string;
@@ -87,6 +107,9 @@ export interface GitHubContentResponse {
   commit?: { sha: string };
 }
 
+/**
+ * The GitHub discussion comment.
+ */
 export interface GitHubDiscussionComment {
   id: string;
   body: string;
@@ -95,6 +118,9 @@ export interface GitHubDiscussionComment {
   author: string | null;
 }
 
+/**
+ * The GitHub discussion.
+ */
 export interface GitHubDiscussion {
   id: string;
   number: number;

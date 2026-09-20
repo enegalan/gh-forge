@@ -1,17 +1,22 @@
-import type { Account } from "../accounts/account.js";
+import type { Account, AccountRole } from "../accounts/account.js";
 import type { ActionCapability, PlannedAction } from "../domain/action.js";
 import { CAPABILITIES_BY_KIND, familyOf, isCapabilitySuperset } from "../domain/action.js";
 import type { Requirement } from "../achievements/achievement.js";
 import { actionKey } from "../utils/hash.js";
 
+/**
+ * The requirement with owner.
+ */
 export interface RequirementWithOwner {
   achievementId: string;
   achievementName: string;
   requirement: Requirement;
 }
 
+/**
+ * The allocation.
+ */
 interface Allocation {
-  /** Achievement that owns the unit index used for the action key. */
   ownerId: string;
   ownerName: string;
   kind: PlannedAction["kind"];
@@ -34,6 +39,9 @@ interface Allocation {
  *  - Action keys are owned by the achievement whose requirement created the
  *    action, so adding a new achievement or raising a target never re-keys the
  *    actions that were already executed (that is what makes `run` resumable).
+ *
+ * @param inputs - The inputs.
+ * @returns The planned actions.
  */
 export function mergeRequirements(inputs: RequirementWithOwner[]): PlannedAction[] {
   const byFamily = new Map<string, RequirementWithOwner[]>();
@@ -47,8 +55,12 @@ export function mergeRequirements(inputs: RequirementWithOwner[]): PlannedAction
   const actions: Allocation[] = [];
   for (const bucket of byFamily.values()) {
     const ordered = [...bucket].sort((a, b) => {
-      if (b.requirement.count !== a.requirement.count) return b.requirement.count - a.requirement.count;
-      return CAPABILITIES_BY_KIND[b.requirement.kind].length - CAPABILITIES_BY_KIND[a.requirement.kind].length;
+      if (b.requirement.count !== a.requirement.count)
+        return b.requirement.count - a.requirement.count;
+      return (
+        CAPABILITIES_BY_KIND[b.requirement.kind].length -
+        CAPABILITIES_BY_KIND[a.requirement.kind].length
+      );
     });
 
     for (const input of ordered) {
@@ -78,6 +90,12 @@ export function mergeRequirements(inputs: RequirementWithOwner[]): PlannedAction
   return actions.map(toPlannedAction);
 }
 
+/**
+ * Converts an allocation to a planned action.
+ *
+ * @param allocation - The allocation.
+ * @returns The planned action.
+ */
 function toPlannedAction(allocation: Allocation): PlannedAction {
   const achievementIds = [...allocation.achievementIds].sort();
   const key = actionKey({
@@ -97,15 +115,24 @@ function toPlannedAction(allocation: Allocation): PlannedAction {
   };
 }
 
+/**
+ * The account requirement summary.
+ */
 export interface AccountRequirementSummary {
-  /** Maximum number of accounts any single requirement needs (main + helpers). */
   maxAccountsRequired: number;
-  /** Maximum number of helper accounts any single requirement needs. */
   helpersRequired: number;
   purposes: string[];
 }
 
-export function summarizeAccountRequirements(requirements: Requirement[]): AccountRequirementSummary {
+/**
+ * Summarizes the account requirements.
+ *
+ * @param requirements - The requirements.
+ * @returns The account requirement summary.
+ */
+export function summarizeAccountRequirements(
+  requirements: Requirement[],
+): AccountRequirementSummary {
   let maxAccountsRequired = 0;
   let helpersRequired = 0;
   const purposes: string[] = [];
@@ -119,9 +146,16 @@ export function summarizeAccountRequirements(requirements: Requirement[]): Accou
   return { maxAccountsRequired, helpersRequired, purposes };
 }
 
+/**
+ * Resolves an account for a role.
+ *
+ * @param input - The input.
+ * @param role - The role.
+ * @returns The account.
+ */
 export function resolveAccountForRole(
   input: { main: Account; helpers: Account[] },
-  role: { role: "main" | "helper"; index: number },
+  role: { role: AccountRole; index: number },
 ): Account | null {
   if (role.role === "main") return input.main;
   return input.helpers[role.index] ?? null;

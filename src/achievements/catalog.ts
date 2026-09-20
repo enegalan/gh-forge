@@ -1,4 +1,4 @@
-import type { AchievementTier } from "./achievement.js";
+import type { AchievementTier, TierName } from "./achievement.js";
 import type { PolicyRisk } from "../domain/policy.js";
 
 /**
@@ -22,12 +22,18 @@ export interface CatalogEntry {
   notes: string[];
 }
 
-export const CATALOG_VERIFIED_AT = "2026-09-16";
-export const COMMUNITY_SOURCE_URL = "https://github.com/drknzz/GitHub-Achievements";
+/**
+ * The names of the tiers.
+ */
+const TIER_NAMES: Array<TierName> = ["default", "bronze", "silver", "gold"];
 
-const TIER_NAMES: Array<AchievementTier["name"]> = ["default", "bronze", "silver", "gold"];
-
-/** Builds cumulative tiers (1 default, 2 bronze, 3 silver, 4 gold) from thresholds. */
+/**
+ * Builds cumulative tiers (1 default, 2 bronze, 3 silver, 4 gold) from thresholds.
+ *
+ * @param thresholds - The thresholds.
+ * @param accountsRequiredFor - The function to calculate the number of accounts required for a given level and requirement.
+ * @returns The tiers.
+ */
 export function tiersFromThresholds(
   thresholds: number[],
   accountsRequiredFor: (level: number, requirement: number) => number,
@@ -39,8 +45,18 @@ export function tiersFromThresholds(
   });
 }
 
+/**
+ * A function that returns the number of accounts required for a single account.
+ *
+ * @returns The number of accounts required for a single account.
+ */
 const singleAccount = (): number => 1;
 
+/**
+ * The automatablable achievement entries.
+ *
+ * @returns The automatablable achievement entries.
+ */
 const AUTOMATABLE_ENTRIES: CatalogEntry[] = [
   {
     id: "quickdraw",
@@ -51,7 +67,7 @@ const AUTOMATABLE_ENTRIES: CatalogEntry[] = [
     tiers: tiersFromThresholds([1], singleAccount),
     notes: [
       "Single tier: there is no bronze/silver/gold progression.",
-      "The 5 minute window is measured from creation to close; GAF closes immediately after creating.",
+      "The 5 minute window is measured from creation to close; GitHub Achievement Forge closes immediately after creating.",
     ],
   },
   {
@@ -63,8 +79,8 @@ const AUTOMATABLE_ENTRIES: CatalogEntry[] = [
     tiers: tiersFromThresholds([2, 16, 128, 1024], singleAccount),
     notes: [
       "Only merged pull requests count; closing without merging does not.",
-      "Pull requests opened in repositories the account owns are counted (this is how GAF earns it).",
-      "Reaching gold means 1022 additional merged pull requests; GAF reports the volume instead of silently grinding it.",
+      "Pull requests opened in repositories the account owns are counted (this is how GitHub Achievement Forge earns it).",
+      "Reaching gold means 1022 additional merged pull requests; GitHub Achievement Forge reports the volume instead of silently grinding it.",
     ],
   },
   {
@@ -76,7 +92,7 @@ const AUTOMATABLE_ENTRIES: CatalogEntry[] = [
     tiers: tiersFromThresholds([1], singleAccount),
     notes: [
       "The pull request must be merged while having no review decision at all.",
-      "Base branch protection must not require approving reviews; GAF detects protection and reports it instead of bypassing it.",
+      "Base branch protection must not require approving reviews; GitHub Achievement Forge detects protection and reports it instead of bypassing it.",
     ],
   },
   {
@@ -89,12 +105,17 @@ const AUTOMATABLE_ENTRIES: CatalogEntry[] = [
     notes: [
       "Requires two accounts: the commit author and the co-author named in the Co-authored-by trailer.",
       "The co-author email must be verified on the co-author's GitHub account.",
-      "The commit must end up merged, so GAF always opens and merges a pull request.",
+      "The commit must end up merged, so GitHub Achievement Forge always opens and merges a pull request.",
     ],
   },
 ];
 
-const OPT_IN_ENTRIES: CatalogEntry[] = [
+/**
+ * The high-risk achievement entries.
+ *
+ * @returns The high-risk achievement entries.
+ */
+const HIGH_RISK_ENTRIES: CatalogEntry[] = [
   {
     id: "galaxy-brain",
     name: "Galaxy Brain",
@@ -105,7 +126,7 @@ const OPT_IN_ENTRIES: CatalogEntry[] = [
     notes: [
       "One account creates the discussion, the main account answers, and the discussion author accepts the answer.",
       "Discussions must be enabled on the repository and the answering account must be able to comment.",
-      "GitHub added a separate 'verified answer' state (GA 2025-09-11) above 'marked as answer'; GAF relies only on the accepted answer.",
+      "GitHub added a separate 'verified answer' state (GA 2025-09-11) above 'marked as answer'; GitHub Achievement Forge relies only on the accepted answer.",
     ],
   },
   {
@@ -118,11 +139,15 @@ const OPT_IN_ENTRIES: CatalogEntry[] = [
     notes: [
       "A single account can only contribute one star per repository, so the strategy needs as many distinct accounts as stars.",
       "The stars must be on a repository owned by the main account.",
-      "HIGH RISK: Acceptable Use Policies list 'rank abuse, such as automated starring or following' as prohibited. GAF requires an explicit consent flag and documents the risk.",
     ],
   },
 ];
 
+/**
+ * The non-automatable achievement entries.
+ *
+ * @returns The non-automatable achievement entries.
+ */
 const NON_AUTOMATABLE_ENTRIES: CatalogEntry[] = [
   {
     id: "public-sponsor",
@@ -131,7 +156,9 @@ const NON_AUTOMATABLE_ENTRIES: CatalogEntry[] = [
     automatable: false,
     policyRisk: "safe",
     tiers: tiersFromThresholds([1], singleAccount),
-    notes: ["Requires real money and a manual payment flow; GAF never automates payments."],
+    notes: [
+      "Requires real money and a manual payment flow; GitHub Achievement Forge never automates payments.",
+    ],
   },
   {
     id: "heart-on-your-sleeve",
@@ -141,7 +168,7 @@ const NON_AUTOMATABLE_ENTRIES: CatalogEntry[] = [
     policyRisk: "safe",
     tiers: [],
     notes: [
-      "GitHub has never documented the trigger, so GAF treats it as unknown: it is listed but never planned or executed.",
+      "GitHub has never documented the trigger, so GitHub Achievement Forge treats it as unknown: it is listed but never planned or executed.",
     ],
   },
   {
@@ -173,29 +200,57 @@ const NON_AUTOMATABLE_ENTRIES: CatalogEntry[] = [
   },
 ];
 
+/**
+ * The achievement catalogue.
+ *
+ * @returns The achievement catalogue.
+ */
 export const ACHIEVEMENT_CATALOG: readonly CatalogEntry[] = [
   ...AUTOMATABLE_ENTRIES,
-  ...OPT_IN_ENTRIES,
+  ...HIGH_RISK_ENTRIES,
   ...NON_AUTOMATABLE_ENTRIES,
 ];
 
+/**
+ * Finds an achievement entry by its ID.
+ *
+ * @param id - The ID of the achievement.
+ * @returns The achievement entry or undefined if not found.
+ */
 export function findCatalogEntry(id: string): CatalogEntry | undefined {
   return ACHIEVEMENT_CATALOG.find((entry) => entry.id === id);
 }
 
-/** Fails loudly if a module asks for a catalogue entry that does not exist. */
+/**
+ * Fails loudly if a module asks for a catalogue entry that does not exist.
+ *
+ * @param id - The ID of the achievement.
+ * @returns The achievement entry.
+ */
 export function requireCatalogEntry(id: string): CatalogEntry {
   const entry = findCatalogEntry(id);
   if (entry === undefined) {
-    throw new Error(`Achievement "${id}" is missing from the catalogue (src/achievements/catalog.ts)`);
+    throw new Error(
+      `Achievement "${id}" is missing from the catalogue (src/achievements/catalog.ts)`,
+    );
   }
   return entry;
 }
 
+/**
+ * The IDs of the achievement catalogue entries.
+ *
+ * @returns The IDs of the achievement catalogue entries.
+ */
 export function catalogIds(): string[] {
   return ACHIEVEMENT_CATALOG.map((entry) => entry.id);
 }
 
+/**
+ * The automatablable achievement catalogue entries.
+ *
+ * @returns The automatablable achievement catalogue entries.
+ */
 export function automatableCatalogEntries(): CatalogEntry[] {
   return ACHIEVEMENT_CATALOG.filter((entry) => entry.automatable);
 }

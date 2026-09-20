@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { homedir } from "node:os";
 import { join } from "node:path";
 import { resolveHomeDir, resolvePaths, type GafPaths } from "../../src/config/paths.js";
 
@@ -8,8 +9,7 @@ describe("resolveHomeDir", () => {
   });
 
   it("falls back to ~/.gh-forge", () => {
-    const homedir = require("node:os").homedir() as string;
-    expect(resolveHomeDir({})).toBe(join(homedir, ".gh-forge"));
+    expect(resolveHomeDir({})).toBe(join(homedir(), ".gh-forge"));
   });
 });
 

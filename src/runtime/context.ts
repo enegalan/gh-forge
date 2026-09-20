@@ -2,7 +2,6 @@ import type { Account } from "../accounts/account.js";
 import { accountsFromConfig, toAccount } from "../accounts/account.js";
 import type { AccountCapabilities } from "../accounts/capabilities.js";
 import { AccountManager } from "../accounts/account-manager.js";
-import type { ExecFn } from "../accounts/auth/token-providers.js";
 import { ConfigStore, resolveMainAccountId } from "../config/config.js";
 import { ProgressStore } from "../config/progress.js";
 import type { GafPaths } from "../config/paths.js";
@@ -10,9 +9,19 @@ import type { Config } from "../config/schema.js";
 import { RunStore } from "../state/run-store.js";
 import { createLogger, type Logger } from "../utils/logger.js";
 import { AccountError, ConfigError, ExecutionError } from "../utils/errors.js";
-import { createAchievementRegistry, type AchievementRegistry } from "../achievements/achievement-registry.js";
-import type { AchievementContext, AchievementExecutor, SandboxTarget } from "../achievements/achievement.js";
+import {
+  createAchievementRegistry,
+  type AchievementRegistry,
+} from "../achievements/achievement-registry.js";
+import type {
+  AchievementContext,
+  AchievementExecutor,
+  SandboxTarget,
+} from "../achievements/achievement.js";
 
+/**
+ * The runtime options.
+ */
 export interface RuntimeOptions {
   paths: GafPaths;
   logger?: Logger;
@@ -20,10 +29,12 @@ export interface RuntimeOptions {
   fetchImpl?: typeof fetch;
   sleep?: (ms: number) => Promise<void>;
   requestTimeoutMs?: number;
-  exec?: ExecFn;
   verifyAccounts?: boolean;
 }
 
+/**
+ * The runtime.
+ */
 export interface Runtime {
   paths: GafPaths;
   config: Config;
@@ -40,7 +51,12 @@ export interface Runtime {
   logger: Logger;
 }
 
-/** Loads config, progress and accounts, and probes every account (read-only). */
+/**
+ * Loads config, progress and accounts, and probes every account (read-only).
+ *
+ * @param options - The options.
+ * @returns The runtime.
+ */
 export async function loadRuntime(options: RuntimeOptions): Promise<Runtime> {
   const logger = options.logger ?? createLogger();
   const configStore = new ConfigStore(options.paths);
@@ -64,11 +80,12 @@ export async function loadRuntime(options: RuntimeOptions): Promise<Runtime> {
     accounts,
     minIntervalMs: config.execution.minIntervalMs,
     logger,
-    ...(options.exec === undefined ? {} : { exec: options.exec }),
     ...(options.env === undefined ? {} : { env: options.env }),
     ...(options.fetchImpl === undefined ? {} : { fetchImpl: options.fetchImpl }),
     ...(options.sleep === undefined ? {} : { sleep: options.sleep }),
-    ...(options.requestTimeoutMs === undefined ? {} : { requestTimeoutMs: options.requestTimeoutMs }),
+    ...(options.requestTimeoutMs === undefined
+      ? {}
+      : { requestTimeoutMs: options.requestTimeoutMs }),
   });
 
   const sandbox = resolveSandbox(config, mainRef.username);
@@ -110,6 +127,13 @@ export async function loadRuntime(options: RuntimeOptions): Promise<Runtime> {
   };
 }
 
+/**
+ * Resolves the sandbox target.
+ *
+ * @param config - The config.
+ * @param mainUsername - The main username.
+ * @returns The sandbox target.
+ */
 export function resolveSandbox(config: Config, mainUsername: string): SandboxTarget {
   const sandbox = config.repositories.sandbox;
   if (sandbox === null) {
@@ -128,6 +152,12 @@ export function resolveSandbox(config: Config, mainUsername: string): SandboxTar
   };
 }
 
+/**
+ * Requires the main account.
+ *
+ * @param runtime - The runtime.
+ * @returns The main account.
+ */
 export function requireMainAccount(runtime: Runtime): Account {
   const mainId = resolveMainAccountId(runtime.config);
   if (mainId === null) {
@@ -140,6 +170,14 @@ export function requireMainAccount(runtime: Runtime): Account {
   return toAccount(mainId, ref);
 }
 
+/**
+ * Builds an achievement context.
+ *
+ * @param runtime - The runtime.
+ * @param executor - The executor.
+ * @param executionState - The execution state.
+ * @returns The achievement context.
+ */
 export async function buildAchievementContext(
   runtime: Runtime,
   executor: AchievementExecutor,
@@ -172,6 +210,8 @@ export async function buildAchievementContext(
 /**
  * Executor used while planning: it guarantees that `gh-forge plan` (and every
  * validation step) can never mutate GitHub, even by accident.
+ *
+ * @returns The read-only executor.
  */
 export function readOnlyExecutor(): AchievementExecutor {
   return {
@@ -183,6 +223,12 @@ export function readOnlyExecutor(): AchievementExecutor {
   };
 }
 
+/**
+ * Describes the authentication errors.
+ *
+ * @param runtime - The runtime.
+ * @returns The authentication errors.
+ */
 export function describeAuthErrors(runtime: Runtime): string[] {
   const messages: string[] = [];
   for (const [, error] of runtime.authErrors) messages.push(error);

@@ -1,5 +1,10 @@
 import type { GafPaths } from "../../config/paths.js";
-import { loadRuntime, buildAchievementContext, readOnlyExecutor, describeAuthErrors } from "../../runtime/context.js";
+import {
+  loadRuntime,
+  buildAchievementContext,
+  readOnlyExecutor,
+  describeAuthErrors,
+} from "../../runtime/context.js";
 import { createPlan, describeActionKind } from "../../planner/planner.js";
 import { parseTargets, defaultTargets, validateAchievementIds } from "../targets.js";
 import { printLine, printJson, section, bullet, table } from "../ui/format.js";
@@ -9,6 +14,9 @@ import { loggerFor } from "../context.js";
 import { saveLastPlanTargets } from "../../state/last-plan.js";
 import { estimateActions, formatDuration } from "../../executor/estimate.js";
 
+/**
+ * The options for the plan command.
+ */
 export interface PlanCommandOptions {
   only?: string[];
   target?: string[];
@@ -17,6 +25,13 @@ export interface PlanCommandOptions {
   quiet?: boolean;
 }
 
+/**
+ * Plans the actions for the given targets.
+ *
+ * @param paths - The paths.
+ * @param options - The options.
+ * @returns The result code.
+ */
 export async function planCommand(paths: GafPaths, options: PlanCommandOptions): Promise<number> {
   const logger = loggerFor(paths, { verbose: options.verbose, quiet: options.quiet });
   const runtime = await loadRuntime({ paths, logger });
@@ -25,9 +40,10 @@ export async function planCommand(paths: GafPaths, options: PlanCommandOptions):
     for (const message of authErrors) logger.warn(message);
   }
 
-  const targets = options.target !== undefined && options.target.length > 0
-    ? parseTargets(options.target)
-    : defaultTargets(runtime.config);
+  const targets =
+    options.target !== undefined && options.target.length > 0
+      ? parseTargets(options.target)
+      : defaultTargets(runtime.config);
 
   if (options.only !== undefined && options.only.length > 0) {
     validateAchievementIds(options.only, runtime.registry);
@@ -67,7 +83,9 @@ export async function planCommand(paths: GafPaths, options: PlanCommandOptions):
 
   if (plan.entries.length === 0) {
     printLine();
-    printLine("No achievements are targeted. Set targets in the config or pass --target <id>=<level>.");
+    printLine(
+      "No achievements are targeted. Set targets in the config or pass --target <id>=<level>.",
+    );
     return 0;
   }
 
@@ -81,10 +99,12 @@ export async function planCommand(paths: GafPaths, options: PlanCommandOptions):
     if (entry.automatable) {
       printLine(`  Actions required: ${entry.actionsRequired}`);
       if (entry.helpersRequired > 0) {
-        printLine(`  Accounts required: ${entry.accountsRequired} (${entry.helpersRequired} helper)`);
+        printLine(
+          `  Accounts required: ${entry.accountsRequired} (${entry.helpersRequired} helper)`,
+        );
       }
     } else {
-      printLine(`  Not automatable by GAF.`);
+      printLine(`  Not automatable by GitHub Achievement Forge.`);
     }
     for (const issue of entry.validation.issues) printLine(`  ✗ ${issue}`);
     for (const note of entry.validation.warnings) printLine(`  ! ${note}`);
@@ -107,13 +127,17 @@ export async function planCommand(paths: GafPaths, options: PlanCommandOptions):
       ),
     );
     if (plan.actions.length > shown.length) {
-      printLine(`  … and ${plan.actions.length - shown.length} more (use --json for the full list).`);
+      printLine(
+        `  … and ${plan.actions.length - shown.length} more (use --json for the full list).`,
+      );
     }
     printLine();
     printLine("Action breakdown:");
     for (const [kind, count] of Object.entries(plan.summary.actionsByKind)) {
       if (count === undefined) continue;
-      printLine(`  ${count}× ${describeActionKind(kind as Parameters<typeof describeActionKind>[0])}`);
+      printLine(
+        `  ${count}× ${describeActionKind(kind as Parameters<typeof describeActionKind>[0])}`,
+      );
     }
     printLine();
     printLine(
@@ -137,8 +161,10 @@ export async function planCommand(paths: GafPaths, options: PlanCommandOptions):
   }
 
   printLine();
-  printLine(plan.readyToExecute
-    ? "Plan is ready to execute. Run `gh-forge run`."
-    : "No actions are planned. Adjust targets and re-run.");
+  printLine(
+    plan.readyToExecute
+      ? "Plan is ready to execute. Run `gh-forge run`."
+      : "No actions are planned. Adjust targets and re-run.",
+  );
   return 0;
 }

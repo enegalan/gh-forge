@@ -32,7 +32,13 @@ export class NoopExecutor implements AchievementExecutor {
     _context: AchievementContext,
     achievementId: string,
     actions: unknown[],
-  ): Promise<{ achievementId: string; executed: number; skipped: number; failed: number; details: string[] }> {
+  ): Promise<{
+    achievementId: string;
+    executed: number;
+    skipped: number;
+    failed: number;
+    details: string[];
+  }> {
     this.calls.push({ achievementId, actionsCount: actions.length });
     return { achievementId, executed: 0, skipped: 0, failed: 0, details: [] };
   }
@@ -89,7 +95,10 @@ export interface StubCalls {
  * Mutable stub GitHub client. Mutating methods record their calls so tests can
  * assert (1) a dry-run never calls them and (2) idempotency short-circuits.
  */
-export function makeStubGitHub(options: StubOptions = {}): { client: GitHubClient; calls: StubCalls } {
+export function makeStubGitHub(options: StubOptions = {}): {
+  client: GitHubClient;
+  calls: StubCalls;
+} {
   const calls: StubCalls = {
     issuesCreate: 0,
     issuesClose: 0,
@@ -123,7 +132,10 @@ export function makeStubGitHub(options: StubOptions = {}): { client: GitHubClien
     getFile: async () => null,
     putFile: async () => {
       calls.putFile += 1;
-      return { commitSha: "sha456", htmlUrl: "https://github.com/octocat/gh-forge-sandbox/blob/main/x.md" };
+      return {
+        commitSha: "sha456",
+        htmlUrl: "https://github.com/octocat/gh-forge-sandbox/blob/main/x.md",
+      };
     },
   } as unknown as RepositoryService;
 
@@ -144,7 +156,8 @@ export function makeStubGitHub(options: StubOptions = {}): { client: GitHubClien
     },
     get: async (_owner: string, _repo: string, number: number) => {
       const existing = options.existingIssue;
-      if (existing !== null && existing !== undefined && existing.number === number) return existing;
+      if (existing !== null && existing !== undefined && existing.number === number)
+        return existing;
       return null;
     },
     close: async () => {
@@ -179,7 +192,11 @@ export function makeStubGitHub(options: StubOptions = {}): { client: GitHubClien
         html_url: "https://github.com/octocat/gh-forge-sandbox/pull/10",
         body: "gh-forge",
         draft: false,
-        head: { ref: "gh-forge/pull-shark/abc", sha: "sha", repo: { full_name: "octocat/gh-forge-sandbox" } },
+        head: {
+          ref: "gh-forge/pull-shark/abc",
+          sha: "sha",
+          repo: { full_name: "octocat/gh-forge-sandbox" },
+        },
         base: { ref: "main" },
         mergeable: true,
       };

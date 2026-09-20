@@ -8,13 +8,23 @@ import { requireCatalogEntry } from "../catalog.js";
  * Strategy (single account):
  *   main opens an issue in the sandbox repository and closes it immediately.
  * The elapsed time between `POST /issues` and `PATCH /issues/{n}` is well below
- * the 5 minute window, so a single action is enough for the only tier.
+ * the 5 minute window, so a single action is enough.
  */
 export class QuickdrawAchievement extends BaseAchievement {
+  /**
+   * Creates a new Quickdraw achievement.
+   */
   constructor() {
     super(requireCatalogEntry("quickdraw"));
   }
 
+  /**
+   * Gets the requirements for the achievement.
+   *
+   * @param targetTier - The target tier.
+   * @param context - The achievement context.
+   * @returns The requirements.
+   */
   override getRequirements(targetTier: number, context: AchievementContext): Requirement[] {
     const units = this.unitsFor(targetTier, this.currentLevel(context));
     if (units === 0) return [];
@@ -25,7 +35,9 @@ export class QuickdrawAchievement extends BaseAchievement {
         count: units,
         accountsRequired: 1,
         helpersRequired: 0,
-        accountRoles: [{ role: "main", index: 0, purpose: "create an issue and close it immediately" }],
+        accountRoles: [
+          { role: "main", index: 0, purpose: "create an issue and close it immediately" },
+        ],
         policyRisk: "safe",
         params: { withinMinutes: 5 },
         description: "open an issue and close it within 5 minutes",
@@ -33,6 +45,12 @@ export class QuickdrawAchievement extends BaseAchievement {
     ];
   }
 
+  /**
+   * Validates the achievement.
+   *
+   * @param context - The achievement context.
+   * @returns The validation result.
+   */
   override async validate(context: AchievementContext): Promise<ValidationResult> {
     const base = await super.validate(context);
     const main = context.mainAccount;

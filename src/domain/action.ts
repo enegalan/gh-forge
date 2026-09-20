@@ -1,6 +1,9 @@
+import type { AccountRole } from "../accounts/account.js";
 import type { PolicyRisk } from "./policy.js";
 
-/** The primitive GitHub operations GAF knows how to perform. */
+/**
+ * The primitive GitHub operations GitHub Achievement Forge knows how to perform.
+ */
 export type ActionKind =
   | "close-issue-fast"
   | "merged-pull-request"
@@ -8,6 +11,9 @@ export type ActionKind =
   | "accepted-discussion-answer"
   | "repository-star";
 
+/**
+ * The labels for the action kinds.
+ */
 export const ACTION_KIND_LABELS: Record<ActionKind, string> = {
   "close-issue-fast": "open and close an issue within 5 minutes",
   "merged-pull-request": "open and merge a pull request",
@@ -22,8 +28,12 @@ export const ACTION_KIND_LABELS: Record<ActionKind, string> = {
  * capabilities are a superset of the requirement's capabilities
  * (a co-authored merged PR is also a merged PR).
  */
-export type ActionCapability = "merged-pr" | "co-authored" | "fast-close" | "accepted-answer" | "star";
+export type ActionCapability =
+  "merged-pr" | "co-authored" | "fast-close" | "accepted-answer" | "star";
 
+/**
+ * The capabilities by kind.
+ */
 export const CAPABILITIES_BY_KIND: Record<ActionKind, ActionCapability[]> = {
   "merged-pull-request": ["merged-pr"],
   "co-authored-merged-pull-request": ["merged-pr", "co-authored"],
@@ -32,17 +42,33 @@ export const CAPABILITIES_BY_KIND: Record<ActionKind, ActionCapability[]> = {
   "repository-star": ["star"],
 };
 
-/** Requirements in the same family compete for the same pool of actions. */
+/**
+ * Requirements in the same family compete for the same pool of actions.
+ *
+ * @param kind - The kind.
+ * @returns The family.
+ */
 export function familyOf(kind: ActionKind): string {
   return CAPABILITIES_BY_KIND[kind][0] ?? kind;
 }
 
-export function isCapabilitySuperset(superset: ActionCapability[], subset: ActionCapability[]): boolean {
+/**
+ * Checks if a capability is a superset of another capability.
+ *
+ * @param superset - The superset.
+ * @param subset - The subset.
+ * @returns True if the capability is a superset of another capability, false otherwise.
+ */
+export function isCapabilitySuperset(
+  superset: ActionCapability[],
+  subset: ActionCapability[],
+): boolean {
   return subset.every((capability) => superset.includes(capability));
 }
 
-
-/** How to find out, at resume time, whether an action already happened. */
+/**
+ * How to find out, at resume time, whether an action already happened.
+ */
 export interface ActionIdempotencyRef {
   type: "issue" | "pull-request" | "discussion" | "commit" | "star";
   marker: string;
@@ -53,27 +79,26 @@ export interface ActionIdempotencyRef {
   accountId?: string;
 }
 
+/**
+ * A planned action.
+ */
 export interface PlannedAction {
   key: string;
   kind: ActionKind;
-  /** Achievements this action advances (one action can satisfy several). */
   achievementIds: string[];
-  /** Human readable description for `gh-forge plan`. */
   description: string;
-  /** Account ids (by role) required to perform the action. */
-  requiredAccounts: PlannedAccountRequirement[];
+  requiredAccounts: {
+    role: AccountRole;
+    index: number;
+    purpose: string;
+  }[];
   params: Record<string, unknown>;
   policyRisk: PolicyRisk;
 }
 
-export interface PlannedAccountRequirement {
-  /** "main" means "the main account", "helper" means "any helper account". */
-  role: "main" | "helper";
-  /** Stable index so multiple helpers are distinguishable. */
-  index: number;
-  purpose: string;
-}
-
+/**
+ * A action summary.
+ */
 export interface ActionSummary {
   total: number;
   pending: number;
@@ -83,6 +108,12 @@ export interface ActionSummary {
   inFlight: number;
 }
 
+/**
+ * Summarizes the actions.
+ *
+ * @param actions - The actions.
+ * @returns The summary.
+ */
 export function summarizeActions(actions: Array<{ status: string }>): ActionSummary {
   const summary: ActionSummary = {
     total: actions.length,

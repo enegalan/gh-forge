@@ -5,11 +5,22 @@ import { configStoreFor } from "../context.js";
 import { printLine, printJson, section } from "../ui/format.js";
 import { UsageError } from "../../utils/errors.js";
 
+/**
+ * The separator for nested config keys.
+ */
 const NESTED_SEPARATOR = ".";
 
+/**
+ * The configurable keys.
+ *
+ * @returns The configurable keys.
+ */
 const CONFIG_KEYS: Array<{ key: string; description: string }> = [
   { key: "mainAccount", description: "main account id" },
-  { key: "policy.allowHighRisk", description: "allow high-risk achievements (Galaxy Brain, Starstruck)" },
+  {
+    key: "policy.allowHighRisk",
+    description: "allow high-risk achievements (Galaxy Brain, Starstruck)",
+  },
   { key: "execution.minIntervalMs", description: "minimum interval between actions (ms)" },
   { key: "execution.mergeMethod", description: "merge method: merge, squash, or rebase" },
   { key: "execution.branchPrefix", description: "branch name prefix" },
@@ -17,7 +28,11 @@ const CONFIG_KEYS: Array<{ key: string; description: string }> = [
   { key: "profileScan.baseUrl", description: "GitHub base URL for profile scans" },
 ];
 
-/** Shows configurable keys with their current values. */
+/**
+ * Shows configurable keys with their current values.
+ *
+ * @returns The result code.
+ */
 export async function configKeysCommand(): Promise<number> {
   const store = configStoreFor(resolvePaths(resolveHomeDir()));
   const config = await store.loadOrDefault();
@@ -29,7 +44,13 @@ export async function configKeysCommand(): Promise<number> {
   return 0;
 }
 
-/** Reads a nested config key like `execution.minIntervalMs`. */
+/**
+ * Reads a nested config key like `execution.minIntervalMs`.
+ *
+ * @param paths - The paths.
+ * @param key - The key.
+ * @returns The result code.
+ */
 export async function configGetCommand(paths: GafPaths, key: string): Promise<number> {
   const store = configStoreFor(paths);
   const config = await store.loadOrDefault();
@@ -41,8 +62,19 @@ export async function configGetCommand(paths: GafPaths, key: string): Promise<nu
   return 0;
 }
 
-/** Writes a nested config key, coercing booleans and numbers. */
-export async function configSetCommand(paths: GafPaths, key: string, value: string): Promise<number> {
+/**
+ * Writes a nested config key, coercing booleans and numbers.
+ *
+ * @param paths - The paths.
+ * @param key - The key.
+ * @param value - The value.
+ * @returns The result code.
+ */
+export async function configSetCommand(
+  paths: GafPaths,
+  key: string,
+  value: string,
+): Promise<number> {
   const store = configStoreFor(paths);
   await store.update((config) => {
     setConfigKey(config, key, coerceValue(value));
@@ -51,11 +83,22 @@ export async function configSetCommand(paths: GafPaths, key: string, value: stri
   return 0;
 }
 
+/**
+ * Gets a nested config key.
+ *
+ * @param config - The configuration.
+ * @param key - The key.
+ * @returns The value of the key.
+ */
 function getConfigKey(config: Config, key: string): unknown {
   const parts = key.split(NESTED_SEPARATOR);
   let current: unknown = config;
   for (const part of parts) {
-    if (current !== null && typeof current === "object" && part in (current as Record<string, unknown>)) {
+    if (
+      current !== null &&
+      typeof current === "object" &&
+      part in (current as Record<string, unknown>)
+    ) {
       current = (current as Record<string, unknown>)[part];
     } else {
       return undefined;
@@ -64,6 +107,13 @@ function getConfigKey(config: Config, key: string): unknown {
   return current;
 }
 
+/**
+ * Sets a nested config key.
+ *
+ * @param config - The configuration.
+ * @param key - The key.
+ * @param value - The value.
+ */
 function setConfigKey(config: Config, key: string, value: unknown): void {
   const parts = key.split(NESTED_SEPARATOR);
   let current: Record<string, unknown> = config as unknown as Record<string, unknown>;
@@ -82,6 +132,12 @@ function setConfigKey(config: Config, key: string, value: unknown): void {
   current[last] = value;
 }
 
+/**
+ * Coerces a value to a string, number, boolean, or null.
+ *
+ * @param raw - The raw value.
+ * @returns The coerced value.
+ */
 function coerceValue(raw: string): string | number | boolean | null {
   const trimmed = raw.trim();
   if (trimmed === "true") return true;

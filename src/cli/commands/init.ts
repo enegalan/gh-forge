@@ -3,6 +3,9 @@ import { createDefaultConfig, type Config } from "../../config/schema.js";
 import type { GafPaths } from "../../config/paths.js";
 import { printLine, section } from "../ui/format.js";
 
+/**
+ * The options for initializing the configuration.
+ */
 export interface InitOptions {
   main?: string;
   force?: boolean;
@@ -10,6 +13,13 @@ export interface InitOptions {
   visibility?: "public" | "private";
 }
 
+/**
+ * Initializes the configuration.
+ *
+ * @param paths - The paths.
+ * @param options - The options.
+ * @returns The result code.
+ */
 export async function initCommand(paths: GafPaths, options: InitOptions): Promise<void> {
   const store = new ConfigStore(paths);
   const exists = await store.exists();
@@ -47,9 +57,13 @@ export async function initCommand(paths: GafPaths, options: InitOptions): Promis
   printLine(`  Home:   ${paths.home}`);
   printLine(`  Config: ${paths.configFile}`);
   if (config.mainAccount !== null) {
-    printLine(`  Main account: ${config.mainAccount} (${config.accounts[config.mainAccount]?.username ?? "?"})`);
+    printLine(
+      `  Main account: ${config.mainAccount} (${config.accounts[config.mainAccount]?.username ?? "?"})`,
+    );
   } else {
-    printLine("  Main account: (not set) - run `gh-forge accounts add main --role main --username <login>`");
+    printLine(
+      "  Main account: (not set) - run `gh-forge accounts add main --role main --username <login>`",
+    );
   }
   printLine();
   printLine("Next steps:");

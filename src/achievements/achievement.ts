@@ -1,4 +1,4 @@
-import type { Account } from "../accounts/account.js";
+import type { Account, AccountRole } from "../accounts/account.js";
 import type { AccountCapabilities } from "../accounts/capabilities.js";
 import type { Config } from "../config/schema.js";
 import type { ActionKind, PlannedAction } from "../domain/action.js";
@@ -7,31 +7,35 @@ import type { GitHubClient } from "../github/github-client.js";
 import type { RunState } from "../state/execution-state.js";
 import type { Logger } from "../utils/logger.js";
 
+/**
+ * Tier names.
+ */
 export type TierName = "default" | "bronze" | "silver" | "gold";
 
 /**
- * Tier levels are normalised as 0..4 where 0 means "not earned yet":
+ * Achievement tiers are normalised as 0..4 where 0 means "not earned yet":
  *   1 = default, 2 = bronze, 3 = silver, 4 = gold
- * `requirement` is cumulative (silver implies bronze implies default).
+ * `requirement` is cumulative (each tier requires the previous tiers):
+ * - default(1): default(1)
+ * - bronze(2): default(1) + bronze(2)
+ * - silver(3): default(1) + bronze(2) + silver(3)
+ * - gold(4): default(1) + bronze(2) + silver(3) + gold(4)
  */
 export interface AchievementTier {
   level: number;
   name: TierName;
   requirement: number;
-  /**
-   * How many distinct accounts the strategy needs for this tier. It is NOT
-   * derived from `requirement`: it comes from the concrete strategy.
-   */
   accountsRequired: number;
 }
 
+/**
+ * A requirement is a concrete, idempotent action that satisfies a tier.
+ */
 export interface Requirement {
   id: string;
   kind: ActionKind;
   count: number;
-  /** Total accounts needed for this strategy (main + helpers). */
   accountsRequired: number;
-  /** How many of those must be helper accounts. */
   helpersRequired: number;
   accountRoles: PlannedAccountRole[];
   policyRisk: PolicyRisk;
@@ -39,18 +43,27 @@ export interface Requirement {
   description: string;
 }
 
-export interface PlannedAccountRole {
-  role: "main" | "helper";
+/**
+ * A planned account role is a main or helper account that is part of the strategy.
+ */
+interface PlannedAccountRole {
+  role: AccountRole;
   index: number;
   purpose: string;
 }
 
+/**
+ * A validation result is the outcome of validating an achievement.
+ */
 export interface ValidationResult {
   ok: boolean;
   issues: string[];
   warnings: string[];
 }
 
+/**
+ * An execution result is the outcome of executing an achievement.
+ */
 export interface ExecutionResult {
   achievementId: string;
   executed: number;
@@ -59,6 +72,9 @@ export interface ExecutionResult {
   details: string[];
 }
 
+/**
+ * A sandbox target is the repository that is used to test the achievement.
+ */
 export interface SandboxTarget {
   owner: string;
   name: string;
@@ -66,13 +82,14 @@ export interface SandboxTarget {
   discussions: boolean;
 }
 
+/**
+ * An achievement context is the context in which an achievement is executed.
+ */
 export interface AchievementContext {
   mainAccount: Account;
   accounts: Account[];
   accountCapabilities: Map<string, AccountCapabilities>;
-  /** Client authenticated as the main account. */
   github: GitHubClient;
-  /** Client authenticated as any configured account. */
   clientFor(accountId: string): GitHubClient;
   knownProgress: Record<string, number>;
   executionState: RunState | null;
@@ -80,32 +97,44 @@ export interface AchievementContext {
   sandbox: SandboxTarget;
   logger: Logger;
   policyGates: PolicyGates;
-  /** Implemented by the executor; declared here to avoid a circular import. */
   executor: AchievementExecutor;
 }
 
+/**
+ * An achievement executor is the object that executes an achievement.
+ */
 export interface AchievementExecutor {
-  runActions(context: AchievementContext, achievementId: string, actions: PlannedAction[]): Promise<ExecutionResult>;
+  runActions(
+    context: AchievementContext,
+    achievementId: string,
+    actions: PlannedAction[],
+  ): Promise<ExecutionResult>;
 }
 
+/**
+ * An achievement is a concrete, idempotent action that satisfies a tier.
+ */
 export interface Achievement {
   id: string;
   name: string;
   description: string;
   policyRisk: PolicyRisk;
-  /** false for retired or unknown-requirement achievements (e.g. Heart On Your Sleeve). */
   automatable: boolean;
 
   getTiers(): AchievementTier[];
-  /** Cumulative units needed to reach a tier level (0 = nothing earned). */
   requirementForLevel(level: number): number;
   getRequirements(targetTier: number, context: AchievementContext): Requirement[];
-  /** Concrete, idempotent actions that satisfy the requirements. */
   buildActions(targetTier: number, context: AchievementContext): PlannedAction[];
   validate(context: AchievementContext): Promise<ValidationResult>;
   execute(context: AchievementContext, targetTier: number): Promise<ExecutionResult>;
 }
 
+/**
+ * Converts a tier name to a level.
+ *
+ * @param name - The tier name.
+ * @returns The level.
+ */
 export function tierNameToLevel(name: TierName): number {
   switch (name) {
     case "default":
@@ -119,6 +148,12 @@ export function tierNameToLevel(name: TierName): number {
   }
 }
 
+/**
+ * Converts a level to a tier name.
+ *
+ * @param level - The level.
+ * @returns The tier name.
+ */
 export function levelToTierName(level: number): TierName | "none" {
   switch (level) {
     case 0:

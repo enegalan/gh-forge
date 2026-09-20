@@ -17,14 +17,22 @@ export interface GitHubClient {
   pullRequests: PullRequestService;
   discussions: DiscussionService;
   stars: StarService;
-  /** Per account rate limit snapshot, updated after every request. */
   readonly rateLimit: { limit: number; remaining: number; resetAt: number } | null;
 }
 
+/**
+ * The create GitHub client options.
+ */
 export interface CreateGitHubClientOptions {
   http: HttpClient;
 }
 
+/**
+ * Creates a GitHub client.
+ *
+ * @param options - The options.
+ * @returns The GitHub client.
+ */
 export function createGitHubClient(options: CreateGitHubClientOptions): GitHubClient {
   const { http } = options;
   const client: GitHubClient = {

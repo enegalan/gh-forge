@@ -11,7 +11,11 @@ import { recordAudit } from "../../state/audit-log.js";
 import { READ_ONLY_RISK_MESSAGE, markRiskAccepted } from "../../domain/consent.js";
 import { loadLastPlanTargets } from "../../state/last-plan.js";
 import { estimateActions, formatDuration } from "../../executor/estimate.js";
+import type { PolicyRisk } from "../../domain/policy.js";
 
+/**
+ * The options for the run command.
+ */
 export interface RunCommandOptions {
   dryRun?: boolean;
   only?: string[];
@@ -23,6 +27,13 @@ export interface RunCommandOptions {
   quiet?: boolean;
 }
 
+/**
+ * The run command.
+ *
+ * @param paths - The paths.
+ * @param options - The options.
+ * @returns The result code.
+ */
 export async function runCommand(paths: GafPaths, options: RunCommandOptions): Promise<number> {
   const logger = loggerFor(paths, { verbose: options.verbose, quiet: options.quiet });
   if (options.status === true) {
@@ -36,9 +47,10 @@ export async function runCommand(paths: GafPaths, options: RunCommandOptions): P
     allowHighRisk: options.allowHighRisk === true || config.policy.allowHighRisk,
   };
 
-  const targets = options.target !== undefined && options.target.length > 0
-    ? parseTargets(options.target)
-    : (await loadLastPlanTargets(paths)) ?? defaultTargets(config);
+  const targets =
+    options.target !== undefined && options.target.length > 0
+      ? parseTargets(options.target)
+      : ((await loadLastPlanTargets(paths)) ?? defaultTargets(config));
 
   if (options.only !== undefined && options.only.length > 0) {
     validateAchievementIds(options.only, runtime.registry);
@@ -75,9 +87,9 @@ export async function runCommand(paths: GafPaths, options: RunCommandOptions): P
     printLine(READ_ONLY_RISK_MESSAGE);
     printLine();
     printLine("This plan contains actions classified beyond the consented risk level:");
-    for (const line of bullet(
-      [...new Set(plan.actions.map((action) => `${action.kind} (${action.policyRisk})`))],
-    )) {
+    for (const line of bullet([
+      ...new Set(plan.actions.map((action) => `${action.kind} (${action.policyRisk})`)),
+    ])) {
       printLine(line);
     }
     printLine();
@@ -112,9 +124,7 @@ export async function runCommand(paths: GafPaths, options: RunCommandOptions): P
       kind: "consent-granted",
       achievementIds: plan.actions.map((action) => action.achievementIds).flat(),
       policyRisk: risk,
-      flags: [
-        ...(flags.allowHighRisk ? ["--allow-high-risk"] : []),
-      ],
+      flags: [...(flags.allowHighRisk ? ["--allow-high-risk"] : [])],
     });
   }
 
@@ -175,7 +185,9 @@ export async function runCommand(paths: GafPaths, options: RunCommandOptions): P
   const done = run.actions.filter((action) => action.status === "done").length;
   const failed = run.actions.filter((action) => action.status === "failed").length;
   const skipped = run.actions.filter((action) => action.status === "skipped").length;
-  const pending = run.actions.filter((action) => action.status === "pending" || action.status === "in_flight").length;
+  const pending = run.actions.filter(
+    (action) => action.status === "pending" || action.status === "in_flight",
+  ).length;
 
   printLine();
   printLine(`Run status: ${run.status}`);
@@ -199,6 +211,12 @@ export async function runCommand(paths: GafPaths, options: RunCommandOptions): P
   return 0;
 }
 
+/**
+ * Shows the latest status of the run.
+ *
+ * @param _paths - The paths.
+ * @returns The result code.
+ */
 async function showLatestStatus(_paths: GafPaths): Promise<number> {
   const { RunStore } = await import("../../state/run-store.js");
   const store = new RunStore(_paths);
@@ -211,13 +229,25 @@ async function showLatestStatus(_paths: GafPaths): Promise<number> {
   if (latest === undefined) return 0;
   const run = await store.load(latest.runId);
   const done = run.actions.filter((action) => action.status === "done").length;
-  const pending = run.actions.filter((action) => action.status === "pending" || action.status === "in_flight").length;
+  const pending = run.actions.filter(
+    (action) => action.status === "pending" || action.status === "in_flight",
+  ).length;
   const failed = run.actions.filter((action) => action.status === "failed").length;
   printLine(`Run ${run.runId} (${run.status}, dry-run=${run.dryRun})`);
-  printLine(`  Actions: ${done} done, ${pending} pending, ${failed} failed of ${run.actions.length}`);
+  printLine(
+    `  Actions: ${done} done, ${pending} pending, ${failed} failed of ${run.actions.length}`,
+  );
   return 0;
 }
 
+/**
+ * Resolves the previous run.
+ *
+ * @param _paths - The paths.
+ * @param resume - The resume flag.
+ * @param runStore - The run store.
+ * @returns The previous run.
+ */
 async function resolvePreviousRun(
   _paths: GafPaths,
   resume: string | boolean | undefined,
@@ -230,7 +260,13 @@ async function resolvePreviousRun(
   return runStore.latestResumable();
 }
 
-function maxRiskOf(risks: Array<"safe" | "high-risk">): "safe" | "high-risk" {
+/**
+ * The maximum risk of the actions.
+ *
+ * @param risks - The risks.
+ * @returns The maximum risk of the actions.
+ */
+function maxRiskOf(risks: PolicyRisk[]): PolicyRisk {
   if (risks.includes("high-risk")) return "high-risk";
   return "safe";
 }

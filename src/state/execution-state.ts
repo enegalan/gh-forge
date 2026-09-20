@@ -1,9 +1,19 @@
 import type { ActionIdempotencyRef, ActionKind } from "../domain/action.js";
 import type { PolicyRisk } from "../domain/policy.js";
 
+/**
+ * The run status.
+ */
 export type RunStatus = "in_progress" | "partial" | "completed" | "failed";
+
+/**
+ * The action status.
+ */
 export type ActionStatus = "pending" | "in_flight" | "done" | "failed" | "skipped";
 
+/**
+ * The action state.
+ */
 export interface ActionState {
   key: string;
   kind: ActionKind;
@@ -13,7 +23,6 @@ export interface ActionState {
   policyRisk: PolicyRisk;
   status: ActionStatus;
   attempts: number;
-  /** Parameters the executor needs to perform the action (e.g. unitIndex). */
   params: Record<string, unknown>;
   ref?: ActionIdempotencyRef;
   result?: Record<string, unknown>;
@@ -22,6 +31,9 @@ export interface ActionState {
   finishedAt?: string;
 }
 
+/**
+ * The run observation.
+ */
 export interface RunObservation {
   at: string;
   kind: string;
@@ -29,6 +41,9 @@ export interface RunObservation {
   detail?: string;
 }
 
+/**
+ * The run state.
+ */
 export interface RunState {
   version: 1;
   runId: string;
@@ -40,12 +55,17 @@ export interface RunState {
   flags: {
     allowHighRisk: boolean;
   };
-  /** Account id -> GitHub login, frozen at run creation time. */
   accounts: Record<string, string>;
   actions: ActionState[];
   observations: RunObservation[];
 }
 
+/**
+ * Creates a run state.
+ *
+ * @param input - The input.
+ * @returns The run state.
+ */
 export function createRunState(input: {
   runId: string;
   targets: Record<string, number>;
@@ -69,15 +89,39 @@ export function createRunState(input: {
   };
 }
 
+/**
+ * Checks if a run is resumable.
+ *
+ * @param run - The run.
+ * @returns True if the run is resumable, false otherwise.
+ */
 export function isResumable(run: RunState): boolean {
   if (run.status === "completed") return false;
-  return run.actions.some((action) => action.status === "pending" || action.status === "failed" || action.status === "in_flight");
+  return run.actions.some(
+    (action) =>
+      action.status === "pending" || action.status === "failed" || action.status === "in_flight",
+  );
 }
 
+/**
+ * Gets the next pending action.
+ *
+ * @param run - The run.
+ * @returns The next pending action.
+ */
 export function nextPendingAction(run: RunState): ActionState | undefined {
-  return run.actions.find((action) => action.status === "pending" || action.status === "in_flight" || action.status === "failed");
+  return run.actions.find(
+    (action) =>
+      action.status === "pending" || action.status === "in_flight" || action.status === "failed",
+  );
 }
 
+/**
+ * Recomputes the run status.
+ *
+ * @param run - The run.
+ * @returns The run status.
+ */
 export function recomputeRunStatus(run: RunState): RunStatus {
   if (run.actions.length === 0) return run.status;
   const failed = run.actions.filter((action) => action.status === "failed").length;

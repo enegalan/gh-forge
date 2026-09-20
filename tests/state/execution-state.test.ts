@@ -79,12 +79,18 @@ describe("nextPendingAction", () => {
 
 describe("recomputeRunStatus", () => {
   it("returns completed when every action is done", () => {
-    expect(recomputeRunStatus(runWithActions([{ status: "done" }, { status: "done" }]))).toBe("completed");
+    expect(recomputeRunStatus(runWithActions([{ status: "done" }, { status: "done" }]))).toBe(
+      "completed",
+    );
   });
 
   it("returns partial when some actions remain", () => {
-    expect(recomputeRunStatus(runWithActions([{ status: "done" }, { status: "pending" }]))).toBe("partial");
-    expect(recomputeRunStatus(runWithActions([{ status: "done" }, { status: "failed" }]))).toBe("partial");
+    expect(recomputeRunStatus(runWithActions([{ status: "done" }, { status: "pending" }]))).toBe(
+      "partial",
+    );
+    expect(recomputeRunStatus(runWithActions([{ status: "done" }, { status: "failed" }]))).toBe(
+      "partial",
+    );
   });
 
   it("keeps the existing status for an empty run", () => {

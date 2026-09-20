@@ -2,7 +2,12 @@ import { describe, expect, it } from "vitest";
 import { FetchHttpClient } from "../../src/github/http/http-client.js";
 
 function makeFetch(
-  handler: (request: { method: string; url: string; headers: Headers; body: string | null }) => Response | Promise<Response>,
+  handler: (request: {
+    method: string;
+    url: string;
+    headers: Headers;
+    body: string | null;
+  }) => Response | Promise<Response>,
 ): typeof fetch {
   type FetchInput = Parameters<typeof fetch>[0];
   return (async (input: FetchInput, init?: RequestInit): Promise<Response> => {
@@ -42,10 +47,13 @@ describe("FetchHttpClient", () => {
 
   it("parses JSON responses", async () => {
     const http = client(
-      makeFetch(() => new Response(JSON.stringify({ login: "octocat" }), {
-        status: 200,
-        headers: { "content-type": "application/json" },
-      })),
+      makeFetch(
+        () =>
+          new Response(JSON.stringify({ login: "octocat" }), {
+            status: 200,
+            headers: { "content-type": "application/json" },
+          }),
+      ),
     );
     const response = await http.request<{ login: string }>({ path: "/user" });
     expect(response.data.login).toBe("octocat");
@@ -53,26 +61,32 @@ describe("FetchHttpClient", () => {
 
   it("returns null from requestOptional on 404", async () => {
     const http = client(
-      makeFetch(() => new Response(JSON.stringify({ message: "nope" }), {
-        status: 404,
-        headers: { "content-type": "application/json" },
-      })),
+      makeFetch(
+        () =>
+          new Response(JSON.stringify({ message: "nope" }), {
+            status: 404,
+            headers: { "content-type": "application/json" },
+          }),
+      ),
     );
     expect(await http.requestOptional({ path: "/things/1" })).toBeNull();
   });
 
   it("throws GitHubHttpError for non-404 failures", async () => {
     const http = client(
-      makeFetch(() => new Response(JSON.stringify({ message: "Forbidden" }), {
-        status: 403,
-        headers: {
-          "content-type": "application/json",
-          "x-ratelimit-remaining": "0",
-          "x-ratelimit-limit": "5000",
-          "x-ratelimit-reset": "9999999999",
-          "x-ratelimit-used": "5000",
-        },
-      })),
+      makeFetch(
+        () =>
+          new Response(JSON.stringify({ message: "Forbidden" }), {
+            status: 403,
+            headers: {
+              "content-type": "application/json",
+              "x-ratelimit-remaining": "0",
+              "x-ratelimit-limit": "5000",
+              "x-ratelimit-reset": "9999999999",
+              "x-ratelimit-used": "5000",
+            },
+          }),
+      ),
     );
     await expect(http.request({ path: "/x" })).rejects.toMatchObject({
       code: "GITHUB_RATE_LIMITED",
@@ -100,17 +114,18 @@ describe("FetchHttpClient", () => {
 
   it("captures rate limit headers", async () => {
     const http = client(
-      makeFetch(() =>
-        new Response(JSON.stringify({ ok: true }), {
-          status: 200,
-          headers: {
-            "content-type": "application/json",
-            "x-ratelimit-limit": "5000",
-            "x-ratelimit-remaining": "4999",
-            "x-ratelimit-reset": "1700000000",
-            "x-ratelimit-used": "1",
-          },
-        }),
+      makeFetch(
+        () =>
+          new Response(JSON.stringify({ ok: true }), {
+            status: 200,
+            headers: {
+              "content-type": "application/json",
+              "x-ratelimit-limit": "5000",
+              "x-ratelimit-remaining": "4999",
+              "x-ratelimit-reset": "1700000000",
+              "x-ratelimit-used": "1",
+            },
+          }),
       ),
     );
     await http.request({ path: "/x" });
@@ -139,10 +154,13 @@ describe("FetchHttpClient", () => {
       minIntervalMs: 0,
       maxRetries: 0,
       sleep: () => Promise.resolve(),
-      fetchImpl: makeFetch(() => new Response(JSON.stringify({ ok: true }), {
-        status: 200,
-        headers: { "content-type": "application/json" },
-      })),
+      fetchImpl: makeFetch(
+        () =>
+          new Response(JSON.stringify({ ok: true }), {
+            status: 200,
+            headers: { "content-type": "application/json" },
+          }),
+      ),
       logger,
     });
     await http.request({ path: "/user" });
@@ -192,11 +210,12 @@ describe("FetchHttpClient", () => {
 
   it("surfaces GraphQL errors", async () => {
     const http = client(
-      makeFetch(() =>
-        new Response(
-          JSON.stringify({ errors: [{ message: "Field 'x' doesn't exist" }] }),
-          { status: 200, headers: { "content-type": "application/json" } },
-        ),
+      makeFetch(
+        () =>
+          new Response(JSON.stringify({ errors: [{ message: "Field 'x' doesn't exist" }] }), {
+            status: 200,
+            headers: { "content-type": "application/json" },
+          }),
       ),
     );
     await expect(http.graphql("{ bogus }")).rejects.toThrow(/doesn't exist/);

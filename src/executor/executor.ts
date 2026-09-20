@@ -1,4 +1,8 @@
-import type { AchievementContext, AchievementExecutor, ExecutionResult } from "../achievements/achievement.js";
+import type {
+  AchievementContext,
+  AchievementExecutor,
+  ExecutionResult,
+} from "../achievements/achievement.js";
 import type { PlannedAction } from "../domain/action.js";
 import { riskAllowed } from "../domain/policy.js";
 import type { ActionState, RunState } from "../state/execution-state.js";
@@ -9,6 +13,9 @@ import { redactSecrets } from "../utils/redact.js";
 import { errorMessage } from "../utils/errors.js";
 import { runAction } from "./action-runner.js";
 
+/**
+ * The executor options.
+ */
 export interface ExecutorOptions {
   runStore: RunStore;
   logger?: Logger;
@@ -24,6 +31,9 @@ export interface ExecutorOptions {
   onAction?: (action: ActionState) => void;
 }
 
+/**
+ * The prepare run options.
+ */
 export interface PrepareRunOptions {
   context: AchievementContext;
   targets: Record<string, number>;
@@ -39,18 +49,56 @@ export interface PrepareRunOptions {
  * so an interrupted run can always be resumed without repeating work.
  */
 export class Executor implements AchievementExecutor {
+  /**
+   * The run store.
+   */
   private readonly runStore: RunStore;
+  /**
+   * The logger.
+   */
   private readonly logger: Logger;
+  /**
+   * The merge method.
+   */
   private readonly mergeMethod: "merge" | "squash" | "rebase";
+  /**
+   * The branch prefix.
+   */
   private readonly branchPrefix: string;
+  /**
+   * The minimum interval milliseconds.
+   */
   private readonly minIntervalMs: number;
+  /**
+   * The maximum attempts.
+   */
   private readonly maxAttempts: number;
+  /**
+   * The merge poll interval milliseconds.
+   */
   private readonly mergePollIntervalMs: number | undefined;
+  /**
+   * The merge max attempts.
+   */
   private readonly mergeMaxAttempts: number | undefined;
+  /**
+   * The sleep function.
+   */
   private readonly sleep: (ms: number) => Promise<void>;
+  /**
+   * The now function.
+   */
   private readonly now: () => number;
+  /**
+   * The on action function.
+   */
   private readonly onAction: ((action: ActionState) => void) | null;
 
+  /**
+   * Creates a new executor.
+   *
+   * @param options - The options.
+   */
   constructor(options: ExecutorOptions) {
     this.runStore = options.runStore;
     this.logger = options.logger ?? createLogger();
@@ -69,6 +117,9 @@ export class Executor implements AchievementExecutor {
    * Creates (or resumes) the run state for a plan. Actions that already exist in
    * a previous run keep their status, which is what makes `gh-forge run` pick up
    * where it left off instead of starting from scratch.
+   *
+   * @param options - The options.
+   * @returns The run state.
    */
   prepareRun(options: PrepareRunOptions): RunState {
     const { context, targets, actions, dryRun, flags } = options;
@@ -95,7 +146,13 @@ export class Executor implements AchievementExecutor {
     return run;
   }
 
-  /** Executes a whole plan, persisting after each action. */
+  /**
+   * Executes a whole plan, persisting after each action.
+   *
+   * @param context - The context.
+   * @param run - The run.
+   * @returns The run state.
+   */
   async executeRun(context: AchievementContext, run: RunState): Promise<RunState> {
     for (const action of run.actions) {
       if (!riskAllowed(action.policyRisk, run.flags) && action.status === "pending") {
@@ -104,7 +161,6 @@ export class Executor implements AchievementExecutor {
       }
     }
 
-    let executedThisRun = 0;
     let lastActionAt = 0;
 
     for (const action of run.actions) {
@@ -122,14 +178,20 @@ export class Executor implements AchievementExecutor {
 
       await this.executeOne(context, run, action);
       lastActionAt = this.now();
-      executedThisRun += 1;
     }
 
     run.status = recomputeRunStatus(run);
     return this.persist(run);
   }
 
-  /** Implements `AchievementExecutor`: used by `gh-forge run --only <id>`. */
+  /**
+   * Implements `AchievementExecutor`: used by `gh-forge run --only <id>`.
+   *
+   * @param context - The context.
+   * @param achievementId - The achievement ID.
+   * @param actions - The actions.
+   * @returns The execution result.
+   */
   async runActions(
     context: AchievementContext,
     achievementId: string,
@@ -148,7 +210,18 @@ export class Executor implements AchievementExecutor {
     return toExecutionResult(achievementId, executed);
   }
 
-  private async executeOne(context: AchievementContext, run: RunState, action: ActionState): Promise<void> {
+  /**
+   * Executes one action.
+   *
+   * @param context - The context.
+   * @param run - The run.
+   * @param action - The action.
+   */
+  private async executeOne(
+    context: AchievementContext,
+    run: RunState,
+    action: ActionState,
+  ): Promise<void> {
     action.status = "in_flight";
     action.attempts += 1;
     action.startedAt = new Date().toISOString();
@@ -200,12 +273,26 @@ export class Executor implements AchievementExecutor {
     this.onAction?.(action);
   }
 
+  /**
+   * Persists the run state.
+   *
+   * @param run - The run.
+   * @returns The run state.
+   */
   private async persist(run: RunState): Promise<RunState> {
     const saved = await this.runStore.save(run);
     run.updatedAt = saved.updatedAt;
     return run;
   }
 }
+
+/**
+ * Merges the action state.
+ *
+ * @param action - The action.
+ * @param previous - The previous action state.
+ * @returns The merged action state.
+ */
 function mergeActionState(action: PlannedAction, previous: ActionState | undefined): ActionState {
   const base: ActionState = {
     key: action.key,
@@ -238,6 +325,12 @@ function mergeActionState(action: PlannedAction, previous: ActionState | undefin
   };
 }
 
+/**
+ * Converts an action state to a planned action.
+ *
+ * @param action - The action state.
+ * @returns The planned action.
+ */
 export function toPlannedAction(action: ActionState): PlannedAction {
   return {
     key: action.key,
@@ -250,6 +343,13 @@ export function toPlannedAction(action: ActionState): PlannedAction {
   };
 }
 
+/**
+ * Converts a run state to an execution result.
+ *
+ * @param achievementId - The achievement ID.
+ * @param run - The run.
+ * @returns The execution result.
+ */
 export function toExecutionResult(achievementId: string, run: RunState): ExecutionResult {
   const mine = run.actions.filter((action) => action.achievementIds.includes(achievementId));
   const done = mine.filter((action) => action.status === "done").length;

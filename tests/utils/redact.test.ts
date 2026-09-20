@@ -7,7 +7,9 @@ describe("redactSecrets", () => {
   });
 
   it("redacts fine-grained PATs", () => {
-    expect(redactSecrets("use github_pat_1234567890abcdefghijklmnopqrstuvwxyz12345")).toContain(REDACTED);
+    expect(redactSecrets("use github_pat_1234567890abcdefghijklmnopqrstuvwxyz12345")).toContain(
+      REDACTED,
+    );
   });
 
   it("redacts OAuth tokens", () => {

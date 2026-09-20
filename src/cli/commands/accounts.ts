@@ -1,15 +1,23 @@
 import type { AccountAuthConfig, AccountRefConfig } from "../../config/schema.js";
 import { listAccounts, resolveMainAccountId } from "../../config/config.js";
 import { describeCapabilities } from "../../accounts/capabilities.js";
-import type { Account } from "../../accounts/account.js";
+import type { Account, AccountRole } from "../../accounts/account.js";
 import { resolveSandbox } from "../../runtime/context.js";
 import type { GafPaths } from "../../config/paths.js";
-import { buildAccountManager, configStoreFor, loadConfigOrThrow, mainAccountIdOrThrow } from "../context.js";
+import {
+  buildAccountManager,
+  configStoreFor,
+  loadConfigOrThrow,
+  mainAccountIdOrThrow,
+} from "../context.js";
 import { AccountError, UsageError } from "../../utils/errors.js";
 import { bullet, printLine, section, table } from "../ui/format.js";
 
+/**
+ * The options for adding an account.
+ */
 export interface AccountAddOptions {
-  role?: "main" | "helper";
+  role?: AccountRole;
   username?: string;
   auth?: "gh" | "token-command" | "env";
   login?: string;
@@ -20,6 +28,14 @@ export interface AccountAddOptions {
   force?: boolean;
 }
 
+/**
+ * Adds an account.
+ *
+ * @param paths - The paths.
+ * @param id - The ID of the account.
+ * @param options - The options.
+ * @returns The result code.
+ */
 export async function accountsAdd(
   paths: GafPaths,
   id: string,
@@ -36,7 +52,7 @@ export async function accountsAdd(
   if (options.username === undefined || options.username.trim() === "") {
     throw new UsageError("An account needs the GitHub username it belongs to", [
       `Run \`gh-forge accounts add ${id} --username <login>\` (add --role main for the primary account).`,
-      "GAF always verifies that the credential belongs to this username.",
+      "GitHub Achievement Forge always verifies that the credential belongs to this username.",
     ]);
   }
   const role = options.role ?? (id === "main" ? "main" : "helper");
@@ -70,6 +86,12 @@ export async function accountsAdd(
   return verifySingle(paths, id, config);
 }
 
+/**
+ * Builds an authentication reference from the options.
+ *
+ * @param options - The options.
+ * @returns The authentication reference.
+ */
 function buildAuthRef(options: AccountAddOptions): AccountAuthConfig {
   const kind = options.auth ?? "gh";
   switch (kind) {
@@ -79,7 +101,7 @@ function buildAuthRef(options: AccountAddOptions): AccountAuthConfig {
       if (options.command === undefined || options.command.trim() === "") {
         throw new UsageError("--auth token-command requires --command '<shell command>'", [
           "The command must print the token on stdout, e.g. `security find-generic-password -s gh-forge-helper-1 -w`.",
-          "GAF never writes the token to disk and never logs it.",
+          "GitHub Achievement Forge never writes the token to disk and never logs it.",
         ]);
       }
       return { kind: "tokenCommand", command: options.command };
@@ -91,17 +113,31 @@ function buildAuthRef(options: AccountAddOptions): AccountAuthConfig {
   }
 }
 
+/**
+ * Describes an authentication reference.
+ *
+ * @param auth - The authentication reference.
+ * @returns The description of the authentication reference.
+ */
 function describeAuth(auth: AccountAuthConfig): string {
   switch (auth.kind) {
     case "gh":
       return `gh keychain${auth.login === undefined ? "" : ` (login ${auth.login})`}`;
     case "tokenCommand":
-      return "external command (token never stored by GAF)";
+      return "external command (token never stored by GitHub Achievement Forge)";
     case "env":
       return `environment variable ${auth.var}`;
   }
 }
 
+/**
+ * Verifies a single account.
+ *
+ * @param paths - The paths.
+ * @param id - The ID of the account.
+ * @param config - The configuration.
+ * @returns The result code.
+ */
 async function verifySingle(
   paths: GafPaths,
   id: string,
@@ -122,6 +158,9 @@ async function verifySingle(
   return 0;
 }
 
+/**
+ * Lists the accounts.
+ */
 export async function accountsList(paths: GafPaths, asJson: boolean): Promise<number> {
   const config = await loadConfigOrThrow(paths);
   const mainId = resolveMainAccountId(config);
@@ -159,12 +198,22 @@ export async function accountsList(paths: GafPaths, asJson: boolean): Promise<nu
   );
   printLine();
   printLine(
-    "GAF never creates GitHub accounts, never asks for passwords and never uses accounts owned by others.",
+    "GitHub Achievement Forge never creates GitHub accounts, never asks for passwords and never uses accounts owned by others.",
   );
   return 0;
 }
 
-export async function accountsTest(paths: GafPaths, accountId: string | undefined): Promise<number> {
+/**
+ * Tests the accounts.
+ *
+ * @param paths - The paths.
+ * @param accountId - The ID of the account.
+ * @returns The result code.
+ */
+export async function accountsTest(
+  paths: GafPaths,
+  accountId: string | undefined,
+): Promise<number> {
   const config = await loadConfigOrThrow(paths);
   const manager = await buildAccountManager(paths, {}, config);
   const mainUsername = config.accounts[mainAccountIdOrThrow(config)]?.username ?? "";
@@ -173,7 +222,10 @@ export async function accountsTest(paths: GafPaths, accountId: string | undefine
 
   let failures = 0;
   for (const account of targets) {
-    const capabilities = await manager.probe(account.id, { owner: sandbox.owner, name: sandbox.name });
+    const capabilities = await manager.probe(account.id, {
+      owner: sandbox.owner,
+      name: sandbox.name,
+    });
     section("");
     for (const line of describeCapabilities(account, capabilities)) printLine(line);
     if (!capabilities.authenticated) failures += 1;
@@ -181,6 +233,13 @@ export async function accountsTest(paths: GafPaths, accountId: string | undefine
   return failures === 0 ? 0 : 1;
 }
 
+/**
+ * Removes an account.
+ *
+ * @param paths - The paths.
+ * @param id - The ID of the account.
+ * @returns The result code.
+ */
 export async function accountsRemove(paths: GafPaths, id: string): Promise<number> {
   const store = configStoreFor(paths);
   const config = await store.loadOrDefault();
@@ -191,11 +250,25 @@ export async function accountsRemove(paths: GafPaths, id: string): Promise<numbe
   if (config.mainAccount === id) config.mainAccount = null;
   await store.save(config);
   printLine(`Removed account "${id}" from gh-forge.`);
-  printLine("(Its GitHub credentials were not touched: GAF never stored them.)");
+  printLine(
+    "(Its GitHub credentials were not touched: GitHub Achievement Forge never stored them.)",
+  );
   return 0;
 }
 
-export async function accountsSetEmail(paths: GafPaths, id: string, email: string): Promise<number> {
+/**
+ * Sets the commit email for an account.
+ *
+ * @param paths - The paths.
+ * @param id - The ID of the account.
+ * @param email - The commit email.
+ * @returns The result code.
+ */
+export async function accountsSetEmail(
+  paths: GafPaths,
+  id: string,
+  email: string,
+): Promise<number> {
   const store = configStoreFor(paths);
   const config = await store.loadOrDefault();
   const account = config.accounts[id];

@@ -1,12 +1,18 @@
 import type { HttpClient } from "../http/http-client.js";
 import type { GitHubDiscussion, GitHubDiscussionComment } from "../types.js";
 
+/**
+ * The repository discussion info.
+ */
 export interface RepositoryDiscussionInfo {
   repositoryId: string;
   hasDiscussionsEnabled: boolean;
   categories: Array<{ id: string; name: string; slug: string }>;
 }
 
+/**
+ * The created discussion.
+ */
 export interface CreatedDiscussion {
   id: string;
   number: number;
@@ -14,6 +20,9 @@ export interface CreatedDiscussion {
   title: string;
 }
 
+/**
+ * The discussion fields.
+ */
 const DISCUSSION_FIELDS = `
   id
   number
@@ -24,6 +33,9 @@ const DISCUSSION_FIELDS = `
   answer { id author { login } }
 `;
 
+/**
+ * The repository info query.
+ */
 const REPOSITORY_INFO_QUERY = `
 query RepositoryDiscussionInfo($owner: String!, $name: String!) {
   repository(owner: $owner, name: $name) {
@@ -35,6 +47,9 @@ query RepositoryDiscussionInfo($owner: String!, $name: String!) {
   }
 }`;
 
+/**
+ * The list discussions query.
+ */
 const LIST_DISCUSSIONS_QUERY = `
 query ListDiscussions($owner: String!, $name: String!, $first: Int!) {
   repository(owner: $owner, name: $name) {
@@ -44,6 +59,9 @@ query ListDiscussions($owner: String!, $name: String!, $first: Int!) {
   }
 }`;
 
+/**
+ * The discussion by ID query.
+ */
 const DISCUSSION_BY_ID_QUERY = `
 query DiscussionById($id: ID!) {
   node(id: $id) {
@@ -56,6 +74,9 @@ query DiscussionById($id: ID!) {
   }
 }`;
 
+/**
+ * The create discussion mutation.
+ */
 const CREATE_DISCUSSION_MUTATION = `
 mutation CreateDiscussion($input: CreateDiscussionInput!) {
   createDiscussion(input: $input) {
@@ -63,6 +84,9 @@ mutation CreateDiscussion($input: CreateDiscussionInput!) {
   }
 }`;
 
+/**
+ * The add comment mutation.
+ */
 const ADD_COMMENT_MUTATION = `
 mutation AddDiscussionComment($input: AddDiscussionCommentInput!) {
   addDiscussionComment(input: $input) {
@@ -70,6 +94,9 @@ mutation AddDiscussionComment($input: AddDiscussionCommentInput!) {
   }
 }`;
 
+/**
+ * The mark answer mutation.
+ */
 const MARK_ANSWER_MUTATION = `
 mutation MarkAnswer($input: MarkDiscussionCommentAsAnswerInput!) {
   markDiscussionCommentAsAnswer(input: $input) {
@@ -82,12 +109,27 @@ mutation MarkAnswer($input: MarkDiscussionCommentAsAnswerInput!) {
  * create them), which is why this service talks GraphQL directly.
  */
 export class DiscussionService {
+  /**
+   * The HTTP client.
+   */
   private readonly http: HttpClient;
 
+  /**
+   * Creates a new discussion service.
+   *
+   * @param http - The HTTP client.
+   */
   constructor(http: HttpClient) {
     this.http = http;
   }
 
+  /**
+   * Gets the repository discussion info.
+   *
+   * @param owner - The owner.
+   * @param repo - The repository.
+   * @returns The repository discussion info.
+   */
   async getRepositoryInfo(owner: string, repo: string): Promise<RepositoryDiscussionInfo> {
     const data = await this.http.graphql<{
       repository: {
@@ -107,6 +149,14 @@ export class DiscussionService {
     };
   }
 
+  /**
+   * Lists the discussions.
+   *
+   * @param owner - The owner.
+   * @param repo - The repository.
+   * @param first - The first.
+   * @returns The discussions.
+   */
   async listDiscussions(owner: string, repo: string, first = 50): Promise<GitHubDiscussion[]> {
     const data = await this.http.graphql<{
       repository: { discussions: { nodes: RawDiscussion[] } } | null;
@@ -115,6 +165,12 @@ export class DiscussionService {
     return data.repository.discussions.nodes.map(toDiscussion);
   }
 
+  /**
+   * Gets the discussion.
+   *
+   * @param discussionId - The discussion ID.
+   * @returns The discussion.
+   */
   async getDiscussion(discussionId: string): Promise<GitHubDiscussion | null> {
     const data = await this.http.graphql<{
       node: (RawDiscussion & { comments?: { nodes: RawComment[] } }) | null;
@@ -123,18 +179,22 @@ export class DiscussionService {
     const comments = data.node.comments?.nodes ?? [];
     return {
       ...toDiscussion(data.node),
-      comments: comments.map(
-        (comment): GitHubDiscussionComment => ({
-          id: comment.id,
-          body: comment.body,
-          url: comment.url,
-          isAnswer: comment.isAnswer,
-          author: comment.author?.login ?? null,
-        }),
-      ),
+      comments: comments.map((comment): GitHubDiscussionComment => ({
+        id: comment.id,
+        body: comment.body,
+        url: comment.url,
+        isAnswer: comment.isAnswer,
+        author: comment.author?.login ?? null,
+      })),
     };
   }
 
+  /**
+   * Creates a discussion.
+   *
+   * @param input - The input.
+   * @returns The created discussion.
+   */
   async createDiscussion(input: {
     repositoryId: string;
     categoryId: string;
@@ -147,7 +207,16 @@ export class DiscussionService {
     return data.createDiscussion.discussion;
   }
 
-  async addComment(input: { discussionId: string; body: string }): Promise<GitHubDiscussionComment> {
+  /**
+   * Adds a comment.
+   *
+   * @param input - The input.
+   * @returns The added comment.
+   */
+  async addComment(input: {
+    discussionId: string;
+    body: string;
+  }): Promise<GitHubDiscussionComment> {
     const data = await this.http.graphql<{
       addDiscussionComment: { comment: { id: string; url: string; body: string } };
     }>(ADD_COMMENT_MUTATION, { input });
@@ -160,11 +229,19 @@ export class DiscussionService {
     };
   }
 
+  /**
+   * Marks a comment as an answer.
+   *
+   * @param commentId - The comment ID.
+   */
   async markAsAnswer(commentId: string): Promise<void> {
     await this.http.graphql(MARK_ANSWER_MUTATION, { input: { id: commentId } });
   }
 }
 
+/**
+ * The raw comment.
+ */
 interface RawComment {
   id: string;
   body: string;
@@ -173,6 +250,9 @@ interface RawComment {
   author: { login: string } | null;
 }
 
+/**
+ * The raw discussion.
+ */
 interface RawDiscussion {
   id: string;
   number: number;
@@ -183,6 +263,12 @@ interface RawDiscussion {
   answer: { id: string; author: { login: string } | null } | null;
 }
 
+/**
+ * Converts a raw discussion to a GitHub discussion.
+ *
+ * @param raw - The raw discussion.
+ * @returns The GitHub discussion.
+ */
 function toDiscussion(raw: RawDiscussion): GitHubDiscussion {
   return {
     id: raw.id,

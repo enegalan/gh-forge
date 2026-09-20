@@ -10,14 +10,24 @@ import { requireCatalogEntry } from "../catalog.js";
  *   receiving a review.
  *
  * Important: this only works when branch protection does not require approving
- * reviews. GAF detects branch protection and reports it; it never disables or
- * bypasses protection rules.
+ * reviews. GitHub Achievement Forge detects branch protection and reports it;
+ * it never disables or bypasses protection rules.
  */
 export class YoloAchievement extends BaseAchievement {
+  /**
+   * Creates a new YOLO achievement.
+   */
   constructor() {
     super(requireCatalogEntry("yolo"));
   }
 
+  /**
+   * Gets the requirements for the achievement.
+   *
+   * @param targetTier - The target tier.
+   * @param context - The achievement context.
+   * @returns The requirements.
+   */
   override getRequirements(targetTier: number, context: AchievementContext): Requirement[] {
     const units = this.unitsFor(targetTier, this.currentLevel(context));
     if (units === 0) return [];
@@ -28,7 +38,9 @@ export class YoloAchievement extends BaseAchievement {
         count: units,
         accountsRequired: 1,
         helpersRequired: 0,
-        accountRoles: [{ role: "main", index: 0, purpose: "merge a pull request without a review" }],
+        accountRoles: [
+          { role: "main", index: 0, purpose: "merge a pull request without a review" },
+        ],
         policyRisk: "safe",
         params: { requireNoReview: true },
         description: "merge a pull request without any review",
@@ -36,13 +48,22 @@ export class YoloAchievement extends BaseAchievement {
     ];
   }
 
+  /**
+   * Validates the achievement.
+   *
+   * @param context - The achievement context.
+   * @returns The validation result.
+   */
   override async validate(context: AchievementContext): Promise<ValidationResult> {
     const base = await super.validate(context);
     const target = context.config.targets[this.id] ?? 0;
     if (target > 0 && this.currentLevel(context) < target) {
       const main = context.mainAccount;
       try {
-        const repository = await context.github.repositories.get(context.sandbox.owner, context.sandbox.name);
+        const repository = await context.github.repositories.get(
+          context.sandbox.owner,
+          context.sandbox.name,
+        );
         if (repository !== null) {
           const protection = await context.github.repositories.getBranchProtection(
             context.sandbox.owner,
@@ -56,7 +77,7 @@ export class YoloAchievement extends BaseAchievement {
               } approving review(s), so a pull request cannot be merged "without a review".`,
             );
             base.warnings.push(
-              "GAF never modifies or bypasses branch protection. Use a repository without required reviews, or ask the maintainer to change it.",
+              "GitHub Achievement Forge never modifies or bypasses branch protection. Use a repository without required reviews, or ask the maintainer to change it.",
             );
           }
         }
@@ -70,7 +91,7 @@ export class YoloAchievement extends BaseAchievement {
         }
       } catch {
         base.warnings.push(
-          "Could not read branch protection settings; GAF will rely on the merge call to fail loudly.",
+          "Could not read branch protection settings; GitHub Achievement Forge will rely on the merge call to fail loudly.",
         );
       }
     }

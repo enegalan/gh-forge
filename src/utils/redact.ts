@@ -1,11 +1,14 @@
 /**
  * Secret redaction.
  *
- * GAF must never print tokens. Any string that is about to be logged, rendered
+ * GitHub Achievement Forge must never print tokens. Any string that is about to be logged, rendered
  * to the terminal, persisted in state or embedded in an error message goes
  * through `redactSecrets` first.
  */
 
+/**
+ * The token patterns.
+ */
 const TOKEN_PATTERNS: RegExp[] = [
   /\bgh[pousr]_[A-Za-z0-9]{16,}\b/g, // ghp_, gho_, ghu_, ghs_, ghr_
   /\bgithub_pat_[A-Za-z0-9_]{20,}\b/g,
@@ -14,8 +17,17 @@ const TOKEN_PATTERNS: RegExp[] = [
   /\bBearer\s+[A-Za-z0-9._-]{10,}/gi,
 ];
 
+/**
+ * The redacted value.
+ */
 export const REDACTED = "***redacted***";
 
+/**
+ * Redacts secrets from a string.
+ *
+ * @param input - The input.
+ * @returns The redacted string.
+ */
 export function redactSecrets(input: string): string {
   let output = input;
   for (const pattern of TOKEN_PATTERNS) {
@@ -24,6 +36,12 @@ export function redactSecrets(input: string): string {
   return output;
 }
 
+/**
+ * Redacts secrets from a value.
+ *
+ * @param value - The value.
+ * @returns The redacted value.
+ */
 export function redactValue(value: unknown): unknown {
   if (typeof value === "string") return redactSecrets(value);
   if (Array.isArray(value)) return value.map(redactValue);

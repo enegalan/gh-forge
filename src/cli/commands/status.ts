@@ -3,12 +3,25 @@ import { RunStore } from "../../state/run-store.js";
 import { printLine, printJson, section, table } from "../ui/format.js";
 import { loggerFor } from "../context.js";
 
+/**
+ * The options for the status command.
+ */
 export interface StatusCommandOptions {
   run?: string;
   json?: boolean;
 }
 
-export async function statusCommand(paths: GafPaths, options: StatusCommandOptions): Promise<number> {
+/**
+ * The status command.
+ *
+ * @param paths - The paths.
+ * @param options - The options.
+ * @returns The result code.
+ */
+export async function statusCommand(
+  paths: GafPaths,
+  options: StatusCommandOptions,
+): Promise<number> {
   const logger = loggerFor(paths, {});
   const store = new RunStore(paths);
   const summaries = await store.list();
@@ -24,7 +37,7 @@ export async function statusCommand(paths: GafPaths, options: StatusCommandOptio
         const run = await store.load(options.run);
         printJson(run);
         return 0;
-      } catch (error) {
+      } catch {
         logger.warn(`Run "${options.run}" not found.`);
         printJson({ error: `Run "${options.run}" not found` });
         return 1;
@@ -52,9 +65,10 @@ export async function statusCommand(paths: GafPaths, options: StatusCommandOptio
   printLine();
   printLine("* resumable with `gh-forge run --resume`");
 
-  const target = options.run !== undefined
-    ? summaries.find((summary) => summary.runId === options.run)
-    : summaries[0];
+  const target =
+    options.run !== undefined
+      ? summaries.find((summary) => summary.runId === options.run)
+      : summaries[0];
 
   if (target === undefined) {
     if (options.run !== undefined) printLine(`Run "${options.run}" not found.`);
@@ -67,8 +81,19 @@ export async function statusCommand(paths: GafPaths, options: StatusCommandOptio
   printLine(`  Dry-run:   ${run.dryRun ? "yes" : "no"}`);
   printLine(`  Created:   ${run.createdAt}`);
   printLine(`  Updated:   ${run.updatedAt}`);
-  printLine(`  Targets:   ${Object.entries(run.targets).map(([id, level]) => `${id}=${level}`).join(", ")}`);
-  printLine(`  Flags:     ${Object.entries(run.flags).filter(([, v]) => v).map(([k]) => k).join(", ") || "none"}`);
+  printLine(
+    `  Targets:   ${Object.entries(run.targets)
+      .map(([id, level]) => `${id}=${level}`)
+      .join(", ")}`,
+  );
+  printLine(
+    `  Flags:     ${
+      Object.entries(run.flags)
+        .filter(([, v]) => v)
+        .map(([k]) => k)
+        .join(", ") || "none"
+    }`,
+  );
 
   section("Actions");
   if (run.actions.length === 0) {
@@ -92,7 +117,9 @@ export async function statusCommand(paths: GafPaths, options: StatusCommandOptio
   if (run.observations.length > 0) {
     section("Observations");
     for (const observation of run.observations) {
-      printLine(`  ${observation.at} ${observation.kind}${observation.achievementId === undefined ? "" : ` (${observation.achievementId})`}${observation.detail === undefined ? "" : ` - ${observation.detail}`}`);
+      printLine(
+        `  ${observation.at} ${observation.kind}${observation.achievementId === undefined ? "" : ` (${observation.achievementId})`}${observation.detail === undefined ? "" : ` - ${observation.detail}`}`,
+      );
     }
   }
 

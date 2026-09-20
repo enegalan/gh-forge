@@ -1,4 +1,4 @@
-import { levelToTierName } from "../achievements/achievement.js";
+import { levelToTierName, type TierName } from "../achievements/achievement.js";
 import { redactSecrets } from "../utils/redact.js";
 
 /**
@@ -6,7 +6,7 @@ import { redactSecrets } from "../utils/redact.js";
  *
  * There is no achievements API: `GET /users/{user}/badges` and
  * `/users/{u}/achievements` return 404 and the GraphQL schema has no achievement
- * field. The profile page does expose them as HTML, so GAF can use it as a
+ * field. The profile page does expose them as HTML, so GitHub Achievement Forge can use it as a
  * convenience to reconcile `knownProgress`:
  *
  *   <div data-achievement-slug="pull-shark">
@@ -18,13 +18,23 @@ import { redactSecrets } from "../utils/redact.js";
  *    under-report. `knownProgress` remains the source of truth.
  *  - The markup is not a public API and may change; failures are not fatal.
  */
-export type ScrapedTier = "default" | "bronze" | "silver" | "gold";
 
+/**
+ * The scraped tier.
+ */
+export type ScrapedTier = TierName;
+
+/**
+ * The scraped achievement.
+ */
 export interface ScrapedAchievement {
   slug: string;
   tier: ScrapedTier;
 }
 
+/**
+ * The profile scan result.
+ */
 export interface ProfileScanResult {
   username: string;
   scannedAt: string;
@@ -32,12 +42,22 @@ export interface ProfileScanResult {
   warnings: string[];
 }
 
+/**
+ * The scan profile options.
+ */
 export interface ScanProfileOptions {
   baseUrl?: string;
   fetchImpl?: typeof fetch;
   signal?: AbortSignal;
 }
 
+/**
+ * Scans a profile.
+ *
+ * @param username - The username.
+ * @param options - The options.
+ * @returns The profile scan result.
+ */
 export async function scanProfile(
   username: string,
   options: ScanProfileOptions = {},
@@ -52,7 +72,9 @@ export async function scanProfile(
     ...(options.signal === undefined ? {} : { signal: options.signal }),
   });
   if (!response.ok) {
-    warnings.push(`Profile scan returned HTTP ${response.status}; knownProgress was left untouched.`);
+    warnings.push(
+      `Profile scan returned HTTP ${response.status}; knownProgress was left untouched.`,
+    );
     return { username, scannedAt: new Date().toISOString(), achievements: [], warnings };
   }
   const html = await response.text();
@@ -65,6 +87,12 @@ export async function scanProfile(
   return { username, scannedAt: new Date().toISOString(), achievements, warnings };
 }
 
+/**
+ * Parses the achievements from the HTML.
+ *
+ * @param html - The HTML.
+ * @returns The scraped achievements.
+ */
 export function parseAchievements(html: string): ScrapedAchievement[] {
   const results: ScrapedAchievement[] = [];
   const seen = new Set<string>();
@@ -86,6 +114,12 @@ export function parseAchievements(html: string): ScrapedAchievement[] {
   return results;
 }
 
+/**
+ * Converts a tier to a level.
+ *
+ * @param tier - The tier.
+ * @returns The level.
+ */
 export function tierToLevel(tier: ScrapedTier): number {
   switch (tier) {
     case "default":
@@ -99,10 +133,22 @@ export function tierToLevel(tier: ScrapedTier): number {
   }
 }
 
+/**
+ * Describes a scraped achievement.
+ *
+ * @param achievement - The achievement.
+ * @returns The description.
+ */
 export function describeScraped(achievement: ScrapedAchievement): string {
   return `${achievement.slug}: ${achievement.tier} (level ${tierToLevel(achievement.tier)}, ${levelToTierName(tierToLevel(achievement.tier))})`;
 }
 
+/**
+ * Safely scans an error.
+ *
+ * @param error - The error.
+ * @returns The safe error.
+ */
 export function safeScanError(error: unknown): string {
   return redactSecrets(error instanceof Error ? error.message : String(error));
 }

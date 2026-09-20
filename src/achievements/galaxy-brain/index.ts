@@ -11,15 +11,22 @@ import { requireCatalogEntry } from "../catalog.js";
  *   marks that answer as accepted.
  *
  * `accountsRequired` is 2 for every tier: the same pair repeats the flow.
- *
- * Policy: classified as `high-risk` because it is coordinated activity between
- * two accounts. See docs/SECURITY.md (Acceptable Use Policies).
  */
 export class GalaxyBrainAchievement extends BaseAchievement {
+  /**
+   * Creates a new Galaxy Brain achievement.
+   */
   constructor() {
     super(requireCatalogEntry("galaxy-brain"));
   }
 
+  /**
+   * Gets the requirements for the achievement.
+   *
+   * @param targetTier - The target tier.
+   * @param context - The achievement context.
+   * @returns The requirements.
+   */
   override getRequirements(targetTier: number, context: AchievementContext): Requirement[] {
     const units = this.unitsFor(targetTier, this.currentLevel(context));
     if (units === 0) return [];
@@ -41,6 +48,12 @@ export class GalaxyBrainAchievement extends BaseAchievement {
     ];
   }
 
+  /**
+   * Validates the achievement.
+   *
+   * @param context - The achievement context.
+   * @returns The validation result.
+   */
   override async validate(context: AchievementContext): Promise<ValidationResult> {
     const base = await super.validate(context);
     const helpers = helpersOf(context);
@@ -58,10 +71,13 @@ export class GalaxyBrainAchievement extends BaseAchievement {
     }
 
     try {
-      const info = await context.github.discussions.getRepositoryInfo(context.sandbox.owner, context.sandbox.name);
+      const info = await context.github.discussions.getRepositoryInfo(
+        context.sandbox.owner,
+        context.sandbox.name,
+      );
       if (!info.hasDiscussionsEnabled) {
         base.issues.push(
-          `Discussions are disabled on ${context.sandbox.owner}/${context.sandbox.name}. Enable them in repository settings (GAF never changes repository settings automatically).`,
+          `Discussions are disabled on ${context.sandbox.owner}/${context.sandbox.name}. Enable them in repository settings (GitHub Achievement Forge never changes repository settings automatically).`,
         );
       } else if (info.categories.length === 0) {
         base.issues.push(

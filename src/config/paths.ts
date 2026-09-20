@@ -1,6 +1,9 @@
 import { homedir } from "node:os";
 import { join } from "node:path";
 
+/**
+ * The paths for the gh-forge configuration.
+ */
 export interface GafPaths {
   home: string;
   configFile: string;
@@ -12,14 +15,29 @@ export interface GafPaths {
   planFile: string;
 }
 
+/**
+ * The default home directory name.
+ */
 export const DEFAULT_HOME_DIRNAME = ".gh-forge";
 
+/**
+ * Resolves the home directory.
+ *
+ * @param env - The environment.
+ * @returns The home directory.
+ */
 export function resolveHomeDir(env: NodeJS.ProcessEnv = process.env): string {
   const override = env["GH_FORGE_HOME"];
   if (override !== undefined && override.trim() !== "") return override;
   return join(homedir(), DEFAULT_HOME_DIRNAME);
 }
 
+/**
+ * Resolves the paths.
+ *
+ * @param home - The home directory.
+ * @returns The paths.
+ */
 export function resolvePaths(home: string = resolveHomeDir()): GafPaths {
   return {
     home,

@@ -9,8 +9,15 @@ import type { PlannedAction } from "../domain/action.js";
 import { ACTION_KIND_LABELS } from "../domain/action.js";
 import type { PolicyGates, PolicyRisk } from "../domain/policy.js";
 import { riskAllowed } from "../domain/policy.js";
-import { mergeRequirements, summarizeAccountRequirements, type RequirementWithOwner } from "./action-planner.js";
+import {
+  mergeRequirements,
+  summarizeAccountRequirements,
+  type RequirementWithOwner,
+} from "./action-planner.js";
 
+/**
+ * The achievement plan.
+ */
 export interface AchievementPlan {
   achievementId: string;
   name: string;
@@ -28,6 +35,9 @@ export interface AchievementPlan {
   validation: ValidationResult;
 }
 
+/**
+ * The plan summary.
+ */
 export interface PlanSummary {
   accountsConfigured: number;
   helperAccountsConfigured: number;
@@ -43,6 +53,9 @@ export interface PlanSummary {
   achievementsAlreadyDone: number;
 }
 
+/**
+ * The plan.
+ */
 export interface Plan {
   generatedAt: string;
   mainAccountId: string | null;
@@ -55,6 +68,9 @@ export interface Plan {
   readyToExecute: boolean;
 }
 
+/**
+ * The create plan options.
+ */
 export interface CreatePlanOptions {
   registry: AchievementRegistry;
   context: AchievementContext;
@@ -63,15 +79,19 @@ export interface CreatePlanOptions {
   policyGates: PolicyGates;
 }
 
+/**
+ * The planned target.
+ */
 interface PlannedTarget {
   achievement: BaseAchievement;
   targetLevel: number;
 }
 
 /**
- * Builds the execution plan. This function is strictly read-only: it never
- * mutates GitHub, and during `gh-forge plan` the context it receives provides an
- * executor that throws if anything tries to run an action.
+ * Builds the execution plan.
+ *
+ * @param options - The options.
+ * @returns The plan.
  */
 export async function createPlan(options: CreatePlanOptions): Promise<Plan> {
   const { registry, context, targets, policyGates } = options;
@@ -112,19 +132,27 @@ export async function createPlan(options: CreatePlanOptions): Promise<Plan> {
     entries.push(entry);
 
     if (!achievement.automatable) {
-      blockers.push(`${achievement.name} cannot be automated by GAF (no verified, automatable requirement).`);
+      blockers.push(
+        `${achievement.name} cannot be automated by GitHub Achievement Forge (no verified, automatable requirement).`,
+      );
     }
     if (targetLevel > achievement.getTiers().length) {
       blockers.push(`${achievement.name} has no tier level ${targetLevel}.`);
     }
     if (!riskAllowed(entry.policyRisk, policyGates)) {
-      blockers.push(`${achievement.name} is classified "${entry.policyRisk}" and was not consented to.`);
+      blockers.push(
+        `${achievement.name} is classified "${entry.policyRisk}" and was not consented to.`,
+      );
     }
     for (const issue of validation.issues) blockers.push(`${achievement.name}: ${issue}`);
     for (const note of validation.warnings) warnings.push(`${achievement.name}: ${note}`);
 
     for (const requirement of entry.requirements) {
-      requirementInputs.push({ achievementId: achievement.id, achievementName: achievement.name, requirement });
+      requirementInputs.push({
+        achievementId: achievement.id,
+        achievementName: achievement.name,
+        requirement,
+      });
       allRequirements.push(requirement);
     }
   }
@@ -139,7 +167,7 @@ export async function createPlan(options: CreatePlanOptions): Promise<Plan> {
         `Missing accounts: ${Math.max(summary.missingAccounts, summary.missingHelpers)}.`,
     );
     warnings.push(
-      "GAF never creates GitHub accounts and never uses accounts belonging to somebody else. Create them yourself and authenticate each one with `gh-forge accounts add`.",
+      "GitHub Achievement Forge never creates GitHub accounts and never uses accounts belonging to somebody else. Create them yourself and authenticate each one with `gh-forge accounts add`.",
     );
   }
 
@@ -163,6 +191,15 @@ export async function createPlan(options: CreatePlanOptions): Promise<Plan> {
   };
 }
 
+/**
+ * Builds an achievement plan entry.
+ *
+ * @param achievement - The achievement.
+ * @param targetLevel - The target level.
+ * @param context - The context.
+ * @param validation - The validation.
+ * @returns The achievement plan entry.
+ */
 function buildEntry(
   achievement: BaseAchievement,
   targetLevel: number,
@@ -190,6 +227,12 @@ function buildEntry(
   };
 }
 
+/**
+ * Summarizes the plan.
+ *
+ * @param input - The input.
+ * @returns The plan summary.
+ */
 function summarizePlan(input: {
   entries: AchievementPlan[];
   actions: PlannedAction[];
@@ -232,10 +275,22 @@ function summarizePlan(input: {
   };
 }
 
+/**
+ * Describes an action kind.
+ *
+ * @param kind - The kind.
+ * @returns The description.
+ */
 export function describeActionKind(kind: PlannedAction["kind"]): string {
   return ACTION_KIND_LABELS[kind];
 }
 
+/**
+ * Deduplicates an array of strings.
+ *
+ * @param values - The values.
+ * @returns The deduplicated values.
+ */
 function dedupe(values: string[]): string[] {
   return [...new Set(values)];
 }

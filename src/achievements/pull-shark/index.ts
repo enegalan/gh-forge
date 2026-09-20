@@ -7,14 +7,22 @@ import { requireCatalogEntry } from "../catalog.js";
  *
  * Strategy (single account):
  *   main opens a pull request in its own (sandbox) repository and merges it.
- * Each merged pull request is one unit; thresholds are cumulative
- * (2 / 16 / 128 / 1024).
  */
 export class PullSharkAchievement extends BaseAchievement {
+  /**
+   * Creates a new Pull Shark achievement.
+   */
   constructor() {
     super(requireCatalogEntry("pull-shark"));
   }
 
+  /**
+   * Gets the requirements for the achievement.
+   *
+   * @param targetTier - The target tier.
+   * @param context - The achievement context.
+   * @returns The requirements.
+   */
   override getRequirements(targetTier: number, context: AchievementContext): Requirement[] {
     const units = this.unitsFor(targetTier, this.currentLevel(context));
     if (units === 0) return [];
@@ -33,6 +41,12 @@ export class PullSharkAchievement extends BaseAchievement {
     ];
   }
 
+  /**
+   * Validates the achievement.
+   *
+   * @param context - The achievement context.
+   * @returns The validation result.
+   */
   override async validate(context: AchievementContext): Promise<ValidationResult> {
     const base = await super.validate(context);
     const units = this.unitsFor(context.config.targets[this.id] ?? 0, this.currentLevel(context));

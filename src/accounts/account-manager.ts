@@ -7,60 +7,118 @@ import { redactSecrets } from "../utils/redact.js";
 import type { Account } from "./account.js";
 import { findAccount, helperAccounts } from "./account.js";
 import { emptyCapabilities, type AccountCapabilities } from "./capabilities.js";
-import { createTokenProvider, TokenCache, defaultExec, type ExecFn, type TokenProvider } from "./auth/token-providers.js";
+import { createTokenProvider, TokenCache, type TokenProvider } from "./auth/token-providers.js";
 
-export interface AuthenticatedAccount {
+/**
+ * An authenticated account is an account that has been authenticated and has a GitHub client.
+ */
+interface AuthenticatedAccount {
   account: Account;
   login: string;
   scopes: string[];
   client: GitHubClient;
 }
 
-export interface SandboxProbeTarget {
+/**
+ * A sandbox probe target is a repository that can be used to probe an account.
+ */
+interface SandboxProbeTarget {
   owner: string;
   name: string;
 }
 
-export interface AccountManagerOptions {
+/**
+ * Options for the AccountManager.
+ */
+interface AccountManagerOptions {
   accounts: Account[];
   minIntervalMs?: number;
   logger?: Logger;
-  exec?: ExecFn;
   env?: NodeJS.ProcessEnv;
   fetchImpl?: typeof fetch;
   sleep?: (ms: number) => Promise<void>;
   requestTimeoutMs?: number;
 }
 
+/**
+ * Manages the accounts and their authentication.
+ */
 export class AccountManager {
+  /**
+   * The accounts.
+   */
   private readonly accounts: Account[];
+  /**
+   * The minimum interval between requests.
+   */
   private readonly minIntervalMs: number;
+  /**
+   * The logger.
+   */
   private readonly logger: Logger;
-  private readonly exec: ExecFn | undefined;
+  /**
+   * The environment variables.
+   */
   private readonly env: NodeJS.ProcessEnv;
+  /**
+   * The fetch implementation.
+   */
   private readonly fetchImpl: typeof fetch | undefined;
+  /**
+   * The sleep implementation.
+   */
   private readonly sleep: ((ms: number) => Promise<void>) | undefined;
+  /**
+   * The request timeout.
+   */
   private readonly requestTimeoutMs: number | undefined;
+  /**
+   * The token cache.
+   */
   private readonly tokenCache = new TokenCache();
+  /**
+   * The token providers.
+   */
   private readonly providers = new Map<string, TokenProvider>();
+  /**
+   * The GitHub clients.
+   */
   private readonly clients = new Map<string, GitHubClient>();
+  /**
+   * The authenticated accounts.
+   */
   private readonly identities = new Map<string, AuthenticatedAccount>();
 
+  /**
+   * Creates a new account manager.
+   *
+   * @param options - The options.
+   */
   constructor(options: AccountManagerOptions) {
     this.accounts = options.accounts;
     this.minIntervalMs = options.minIntervalMs ?? 0;
     this.logger = options.logger ?? createLogger();
-    this.exec = options.exec;
     this.env = options.env ?? process.env;
     this.fetchImpl = options.fetchImpl;
     this.sleep = options.sleep;
     this.requestTimeoutMs = options.requestTimeoutMs;
   }
 
+  /**
+   * Gets all accounts.
+   *
+   * @returns The accounts.
+   */
   all(): Account[] {
     return [...this.accounts];
   }
 
+  /**
+   * Gets an account by its ID.
+   *
+   * @param accountId - The ID of the account.
+   * @returns The account.
+   */
   get(accountId: string): Account {
     const account = findAccount(this.accounts, accountId);
     if (account === undefined) {
@@ -71,10 +129,21 @@ export class AccountManager {
     return account;
   }
 
+  /**
+   * Tries to get an account by its ID.
+   *
+   * @param accountId - The ID of the account.
+   * @returns The account or null if not found.
+   */
   tryGet(accountId: string): Account | null {
     return findAccount(this.accounts, accountId) ?? null;
   }
 
+  /**
+   * Requires a main account.
+   *
+   * @returns The main account.
+   */
   requireMain(): Account {
     const mains = this.accounts.filter((account) => account.role === "main");
     const main = mains[0];
@@ -86,18 +155,35 @@ export class AccountManager {
     return main;
   }
 
+  /**
+   * The helper accounts.
+   *
+   * @returns The helper accounts.
+   */
   helpers(): Account[] {
     return helperAccounts(this.accounts);
   }
 
+  /**
+   * Gets a token provider for an account.
+   *
+   * @param account - The account.
+   * @returns The token provider.
+   */
   providerFor(account: Account): TokenProvider {
     const cached = this.providers.get(account.id);
     if (cached !== undefined) return cached;
-    const provider = createTokenProvider(account, this.exec ?? defaultExec, this.env);
+    const provider = createTokenProvider(account, this.env);
     this.providers.set(account.id, provider);
     return provider;
   }
 
+  /**
+   * Gets a GitHub client for an account.
+   *
+   * @param account - The account.
+   * @returns The GitHub client.
+   */
   clientFor(account: Account): GitHubClient {
     const cached = this.clients.get(account.id);
     if (cached !== undefined) return cached;
@@ -115,6 +201,12 @@ export class AccountManager {
     return client;
   }
 
+  /**
+   * Gets a description of the token provider for an account.
+   *
+   * @param account - The account.
+   * @returns The description of the token provider.
+   */
   tokenProviderDescription(account: Account): string {
     try {
       return this.providerFor(account).describe();
@@ -123,6 +215,12 @@ export class AccountManager {
     }
   }
 
+  /**
+   * Gets troubleshooting information for an account.
+   *
+   * @param account - The account.
+   * @returns The troubleshooting information.
+   */
   troubleshootFor(account: Account): string[] {
     try {
       return this.providerFor(account).troubleshoot();
@@ -133,7 +231,10 @@ export class AccountManager {
 
   /**
    * Authenticates an account and proves that the token belongs to the username
-   * the user configured. GAF refuses to continue if they do not match.
+   * the user configured. GitHub Achievement Forge refuses to continue if they do not match.
+   *
+   * @param accountId - The ID of the account.
+   * @returns The authenticated account.
    */
   async authenticate(accountId: string): Promise<AuthenticatedAccount> {
     const cached = this.identities.get(accountId);
@@ -149,7 +250,7 @@ export class AccountManager {
         `Account "${account.id}" is configured as ${account.username} but the credential belongs to ${user.login}`,
         [
           "Each account must be authenticated with a token belonging to that account.",
-          "GAF never uses credentials for an account it cannot identify.",
+          "GitHub Achievement Forge never uses credentials for an account it cannot identify.",
           `Run \`gh-forge accounts remove ${account.id}\` and add it again with the right credentials.`,
         ],
       );
@@ -164,8 +265,15 @@ export class AccountManager {
    * Real capability probe used by `gh-forge accounts test`. Nothing here
    * mutates GitHub; everything is read-only and failures are reported instead of
    * thrown, so the planner can explain exactly what is missing.
+   *
+   * @param accountId - The ID of the account.
+   * @param sandbox - The sandbox probe target.
+   * @returns The account capabilities.
    */
-  async probe(accountId: string, sandbox: SandboxProbeTarget | null = null): Promise<AccountCapabilities> {
+  async probe(
+    accountId: string,
+    sandbox: SandboxProbeTarget | null = null,
+  ): Promise<AccountCapabilities> {
     const account = this.get(accountId);
     const capabilities = emptyCapabilities();
     const notes = capabilities.notes;
@@ -210,12 +318,15 @@ export class AccountManager {
     if (sandbox !== null) {
       const repository = await authenticated.client.repositories.get(sandbox.owner, sandbox.name);
       if (repository === null) {
-        notes.push(`Sandbox repository ${sandbox.owner}/${sandbox.name} does not exist yet (gh-forge run can create it).`);
+        notes.push(
+          `Sandbox repository ${sandbox.owner}/${sandbox.name} does not exist yet (gh-forge run can create it).`,
+        );
       } else {
         const push = repository.permissions?.push === true;
         capabilities.canPushToSandbox = push;
         capabilities.canComment = !repository.private || push;
-        capabilities.canCreateDiscussions = repository.has_discussions && (!repository.private || push);
+        capabilities.canCreateDiscussions =
+          repository.has_discussions && (!repository.private || push);
         if (!repository.has_discussions) {
           notes.push(
             `Discussions are disabled on ${sandbox.owner}/${sandbox.name}; Galaxy Brain cannot be executed there.`,
@@ -245,6 +356,14 @@ export class AccountManager {
     return capabilities;
   }
 
+  /**
+   * Resolves the commit email for an account.
+   *
+   * @param account - The account.
+   * @param authenticated - The authenticated account.
+   * @param notes - The notes.
+   * @returns The commit email.
+   */
   private async resolveCommitEmail(
     account: Account,
     authenticated: AuthenticatedAccount,
@@ -257,7 +376,9 @@ export class AccountManager {
       const primary = verified.find((entry) => entry.primary) ?? verified[0];
       if (primary !== undefined) return primary.email;
       if (emails.length === 0) {
-        notes.push("Could not read account emails (the token likely lacks the `user:email` scope).");
+        notes.push(
+          "Could not read account emails (the token likely lacks the `user:email` scope).",
+        );
       }
     } catch (error) {
       notes.push(`Could not read account emails: ${redactSecrets(errorMessage(error))}`);
@@ -265,6 +386,9 @@ export class AccountManager {
     return null;
   }
 
+  /**
+   * Clears the cache.
+   */
   clearCache(): void {
     this.tokenCache.clear();
     this.identities.clear();

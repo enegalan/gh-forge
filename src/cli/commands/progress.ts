@@ -5,11 +5,23 @@ import { UsageError } from "../../utils/errors.js";
 import { createAchievementRegistry } from "../../achievements/achievement-registry.js";
 import type { ProgressEntry } from "../../config/schema.js";
 
+/**
+ * The options for the progress command.
+ */
 export interface ProgressCommandOptions {
   clear?: boolean;
   json?: boolean;
 }
 
+/**
+ * The progress command.
+ *
+ * @param paths - The paths.
+ * @param achievementId - The ID of the achievement.
+ * @param level - The level.
+ * @param options - The options.
+ * @returns The result code.
+ */
 export async function progressCommand(
   paths: GafPaths,
   achievementId: string | undefined,
@@ -53,7 +65,9 @@ export async function progressCommand(
       );
     }
     printLine();
-    printLine("level: badge tier you already earned (0=none, 1=default, 2=bronze, 3=silver, 4=gold).");
+    printLine(
+      "level: badge tier you already earned (0=none, 1=default, 2=bronze, 3=silver, 4=gold).",
+    );
     printLine("Record an earned tier with `gh-forge progress <id> <level>`.");
     return 0;
   }
@@ -69,7 +83,9 @@ export async function progressCommand(
     if (options.json === true) {
       printJson(entry);
     } else {
-      printLine(`${achievementId}: level ${entry.level}${entry.updatedAt === undefined ? "" : ` (${entry.updatedAt})`}`);
+      printLine(
+        `${achievementId}: level ${entry.level}${entry.updatedAt === undefined ? "" : ` (${entry.updatedAt})`}`,
+      );
     }
     return 0;
   }
@@ -99,6 +115,11 @@ export async function progressCommand(
   return 0;
 }
 
+/**
+ * Validates an achievement ID.
+ *
+ * @param id - The ID of the achievement.
+ */
 function validateAchievementId(id: string): void {
   const registry = createAchievementRegistry();
   if (registry.tryGet(id) === null) {

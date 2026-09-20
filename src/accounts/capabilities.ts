@@ -25,6 +25,11 @@ export interface AccountCapabilities {
   notes: string[];
 }
 
+/**
+ * Creates an empty set of capabilities.
+ *
+ * @returns The empty capabilities.
+ */
 export function emptyCapabilities(): AccountCapabilities {
   return {
     authenticated: false,
@@ -45,7 +50,17 @@ export function emptyCapabilities(): AccountCapabilities {
   };
 }
 
-export function describeCapabilities(account: Account, capabilities: AccountCapabilities): string[] {
+/**
+ * Describes the capabilities of an account.
+ *
+ * @param account - The account.
+ * @param capabilities - The capabilities.
+ * @returns The description of the capabilities.
+ */
+export function describeCapabilities(
+  account: Account,
+  capabilities: AccountCapabilities,
+): string[] {
   const tick = (value: boolean): string => (value ? "YES" : "NO");
   const lines = [
     `Account: ${account.id} (${account.username})`,
