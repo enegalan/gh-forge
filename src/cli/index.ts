@@ -16,8 +16,11 @@ import { planCommand } from "./commands/plan.js";
 import { runCommand } from "./commands/run.js";
 import { statusCommand } from "./commands/status.js";
 import { configGetCommand, configSetCommand, configKeysCommand } from "./commands/config.js";
-import { achievementsListCommand, achievementsShowCommand } from "./commands/achievements.js";
-import { progressCommand } from "./commands/progress.js";
+import {
+  achievementsListCommand,
+  achievementsShowCommand,
+  achievementsProgressCommand,
+} from "./commands/achievements.js";
 import type { AccountRole } from "../accounts/account.js";
 
 const require = createRequire(import.meta.url);
@@ -182,7 +185,7 @@ program
   .command("plan")
   .description("Plan which actions are needed to reach target achievement levels.")
   .option("--only <id...>", "limit plan to specific achievement ids")
-  .option("--target <id=level...>", "override per-achievement target levels")
+  .option("--achievement <id=level...>", "override per-achievement target levels")
   .option("--json", "output as JSON")
   .action(async (opts) => {
     try {
@@ -190,7 +193,7 @@ program
       const gOpts = globalOptions();
       const code = await planCommand(paths, {
         only: opts.only as string[] | undefined,
-        target: opts.target as string[] | undefined,
+        achievement: opts.achievement as string[] | undefined,
         json: opts.json as boolean | undefined,
         verbose: gOpts.verbose,
         quiet: gOpts.quiet,
@@ -314,15 +317,26 @@ configCmd
  */
 const achievementsCmd = program
   .command("achievements")
-  .description("List and inspect GitHub achievements.");
+  .description("List, inspect, and track GitHub achievements.")
+  .action(async () => {
+    try {
+      const paths = pathsFor();
+      const code = await achievementsListCommand(paths, {});
+      process.exitCode = code;
+    } catch (error) {
+      renderError(error);
+      process.exitCode = 1;
+    }
+  });
 
 achievementsCmd
   .command("list")
-  .description("List all known achievements with their policy risk.")
+  .description("List all achievements with their current progress.")
   .option("--json", "output as JSON")
   .action(async (opts) => {
     try {
-      const code = await achievementsListCommand(opts.json as boolean);
+      const paths = pathsFor();
+      const code = await achievementsListCommand(paths, { json: opts.json as boolean });
       process.exitCode = code;
     } catch (error) {
       renderError(error);
@@ -344,24 +358,15 @@ achievementsCmd
     }
   });
 
-/**
- * The progress command.
- *
- * @param achievementId - The ID of the achievement.
- * @param level - The level.
- * @param opts - The options.
- */
-program
-  .command("progress")
-  .description("Set or view known achievement progress levels.")
-  .argument("[achievementId]", "achievement to view or set")
-  .argument("[level]", "new level (0-4) to set")
+achievementsCmd
+  .command("progress [achievementId] [level]")
+  .description("View or set achievement progress levels.")
   .option("--clear", "remove the progress entry for this achievement")
   .option("--json", "output as JSON")
   .action(async (achievementId, level, opts) => {
     try {
       const paths = pathsFor();
-      const code = await progressCommand(
+      const code = await achievementsProgressCommand(
         paths,
         achievementId as string | undefined,
         level as string | undefined,

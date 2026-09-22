@@ -95,6 +95,10 @@ export async function progressCommand(
     throw new UsageError(`Level must be an integer between 0 and 4, received "${level}"`);
   }
 
+  if (parsedLevel !== 0) {
+    validateLevelForAchievement(achievementId, parsedLevel);
+  }
+
   if (parsedLevel === 0) {
     await store.clear(achievementId);
     if (options.json === true) {
@@ -126,5 +130,35 @@ function validateAchievementId(id: string): void {
     throw new UsageError(`Unknown achievement "${id}"`, [
       "Known ids: " + registry.ids().sort().join(", "),
     ]);
+  }
+}
+
+/**
+ * Validates a level for an achievement.
+ *
+ * @param id - The ID of the achievement.
+ * @param level - The level.
+ * @returns The result code.
+ */
+function validateLevelForAchievement(id: string, level: number): void {
+  const registry = createAchievementRegistry();
+  const achievement = registry.tryGet(id);
+  if (achievement === null) return;
+
+  const tiers = achievement.getTiers();
+  const maxLevel = tiers.length > 0 ? (tiers[tiers.length - 1]?.level ?? 0) : 0;
+
+  if (tiers.length === 0) {
+    throw new UsageError(`Achievement "${id}" has no documented tiers`, [
+      "Level cannot be set for this achievement.",
+    ]);
+  }
+
+  if (level > maxLevel) {
+    const tierNames = tiers.map((t) => `${t.level}=${t.name}`).join(", ");
+    throw new UsageError(
+      `Achievement "${id}" only has ${maxLevel} tier${maxLevel === 1 ? "" : "s"} (${tierNames})`,
+      [`Valid levels: 0 (none), ${tierNames}`],
+    );
   }
 }

@@ -57,10 +57,10 @@ node dist/cli/index.js accounts add helper-1 --role helper --username <second-us
 node dist/cli/index.js accounts test
 
 # 4. Record how far you already are (optional but recommended: 0=none, 1=default, 2=bronze, 3=silver, 4=gold)
-node dist/cli/index.js progress pull-shark 1
+node dist/cli/index.js achievements progress pull-shark 1
 
 # 5. Plan and preview
-node dist/cli/index.js plan --target quickdraw=1
+node dist/cli/index.js plan --achievement quickdraw=1
 node dist/cli/index.js run --dry-run
 
 # 6. Go
@@ -100,11 +100,11 @@ Authentication methods:
 
 ### `gh-forge plan`
 
-| option                | purpose                                                            |
-| --------------------- | ------------------------------------------------------------------ |
-| `--target <id=level>` | override a target level (1–4, matching default/bronze/silver/gold) |
-| `--only <id...>`      | plan only specific achievements                                    |
-| `--json`              | machine-readable output                                            |
+| option                     | purpose                                                            |
+| -------------------------- | ------------------------------------------------------------------ |
+| `--achievement <id=level>` | override a target level (1–4, matching default/bronze/silver/gold) |
+| `--only <id...>`           | plan only specific achievements                                    |
+| `--json`                   | machine-readable output                                            |
 
 `plan` is read-only — it never touches GitHub. It also prints an estimated
 execution time, derived from the request count per action kind and
@@ -134,20 +134,20 @@ estimate covers only what is left.
 Shows past runs. `--run <runId>` and `--json` give more detail. Interrupted
 runs can be continued with `gh-forge run --resume`.
 
-### `gh-forge achievements` / `progress` / `config`
+### `gh-forge achievements` / `config`
 
 - `achievements list` — the whole catalogue with policy risk per achievement.
 - `achievements show <id>` — details, requirements, tiers, and _provenance_
   (where the requirement comes from and when it was verified).
-- `progress` (no arguments) — shows the full reference table: every achievement
-  (id + name) with your recorded level (`0` = none). Run this first to learn
-  the ids.
-- `progress <id> [level]` — record how far you already are so the planner
-  doesn't repeat earned levels. **The level is the badge tier** (`0` = none,
-  `1` = default, `2` = bronze, `3` = silver, `4` = gold);
-  `progress pull-shark 1` means "I already have the default Pull Shark badge".
-  Setting `0` is the same as not having recorded anything (it clears the
-  entry).
+- `achievements progress` (no arguments) — shows the full reference table:
+  every achievement (id + name) with your recorded level (`0` = none). Run this
+  first to learn the ids.
+- `achievements progress <id> [level]` — record how far you already are so the
+  planner doesn't repeat earned levels. **The level is the badge tier**
+  (`0` = none, `1` = default, `2` = bronze, `3` = silver, `4` = gold);
+  `achievements progress pull-shark 1` means "I already have the default Pull
+  Shark badge". Setting `0` is the same as not having recorded anything (it
+  clears the entry).
 - `config get/set <key>` — fine-tune defaults
   (e.g. `execution.minIntervalMs`, `execution.branchPrefix`).
 

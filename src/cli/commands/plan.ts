@@ -19,7 +19,7 @@ import { estimateActions, formatDuration } from "../../executor/estimate.js";
  */
 export interface PlanCommandOptions {
   only?: string[];
-  target?: string[];
+  achievement?: string[];
   json?: boolean;
   verbose?: boolean;
   quiet?: boolean;
@@ -41,8 +41,8 @@ export async function planCommand(paths: GafPaths, options: PlanCommandOptions):
   }
 
   const targets =
-    options.target !== undefined && options.target.length > 0
-      ? parseTargets(options.target)
+    options.achievement !== undefined && options.achievement.length > 0
+      ? parseTargets(options.achievement)
       : defaultTargets(runtime.config);
 
   if (options.only !== undefined && options.only.length > 0) {
@@ -84,7 +84,7 @@ export async function planCommand(paths: GafPaths, options: PlanCommandOptions):
   if (plan.entries.length === 0) {
     printLine();
     printLine(
-      "No achievements are targeted. Set targets in the config or pass --target <id>=<level>.",
+      "No achievements are targeted. Set targets in the config or pass --achievement <id>=<level>.",
     );
     return 0;
   }

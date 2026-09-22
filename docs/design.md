@@ -110,7 +110,7 @@ need more than the caps allow.
 `gh-forge init` writes a zod-validated JSON file (`~/.gh-forge/config.json`
 by default, `--home` to relocate). Accounts, targets, and progress are stored
 in adjacent JSON files and read/written atomically (`src/utils/fs-atomic.ts`).
-`gh-forge config get/set/progress` are thin wrappers over that store.
+`gh-forge config get/set` and `gh-forge achievements progress` are thin wrappers over that store.
 
 ## Testing
 
