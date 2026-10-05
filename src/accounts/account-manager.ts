@@ -1,5 +1,6 @@
 import type { GitHubClient } from "../github/github-client.js";
 import { createGitHubClient } from "../github/github-client.js";
+import type { GitHubEmail } from "../github/types.js";
 import { FetchHttpClient } from "../github/http/http-client.js";
 import { createLogger, type Logger } from "../utils/logger.js";
 import { AuthError, AccountError, errorMessage } from "../utils/errors.js";
@@ -25,6 +26,54 @@ interface AuthenticatedAccount {
 interface SandboxProbeTarget {
   owner: string;
   name: string;
+}
+
+/**
+ * The outcome of resolving an account's commit email.
+ *
+ * `verified` is true only when GitHub confirmed the address belongs to the
+ * account. It is the single source of truth for whether a `Co-authored-by`
+ * trailer will be credited.
+ */
+interface CommitEmailResolution {
+  email: string | null;
+  verified: boolean;
+}
+
+/**
+ * Whether a token's scopes allow reading the account's email addresses.
+ *
+ * `GET /user/emails` answers 404 without `user:email`, which the HTTP layer
+ * reports as "no data" rather than an error, so the scopes are the only
+ * reliable way to tell a missing scope apart from an account with no emails.
+ *
+ * @param scopes - The token scopes.
+ * @returns True if emails can be read.
+ */
+function canReadEmails(scopes: string[]): boolean {
+  return scopes.includes("user") || scopes.includes("user:email");
+}
+
+/**
+ * Compares email addresses case-insensitively.
+ *
+ * @param left - The first address.
+ * @param right - The second address.
+ * @returns True if both are the same address.
+ */
+function sameEmail(left: string, right: string): boolean {
+  return left.trim().toLowerCase() === right.trim().toLowerCase();
+}
+
+/**
+ * Renders verified addresses for an error message.
+ *
+ * @param verified - The verified addresses.
+ * @returns The rendered list.
+ */
+function describeEmails(verified: GitHubEmail[]): string {
+  if (verified.length === 0) return "(none)";
+  return verified.map((entry) => `"${entry.email}"`).join(", ");
 }
 
 /**
@@ -345,9 +394,11 @@ export class AccountManager {
       }
     }
 
-    capabilities.commitEmail = await this.resolveCommitEmail(account, authenticated, notes);
-    capabilities.canAttributeCoAuthoredCommit = capabilities.commitEmail !== null;
-    if (capabilities.commitEmail === null) {
+    const resolution = await this.resolveCommitEmail(account, authenticated, notes);
+    capabilities.commitEmail = resolution.email;
+    capabilities.commitEmailVerified = resolution.verified;
+    capabilities.canAttributeCoAuthoredCommit = resolution.email !== null && resolution.verified;
+    if (resolution.email === null && (account.commitEmail ?? "") === "") {
       notes.push(
         `Set a commit email for "${account.id}" (\`gh-forge accounts set-email ${account.id} <email>\`) to use Pair Extraordinaire.`,
       );
@@ -357,33 +408,60 @@ export class AccountManager {
   }
 
   /**
-   * Resolves the commit email for an account.
+   * Resolves the commit email for an account and proves GitHub would credit it.
+   *
+   * GitHub only attributes a `Co-authored-by` trailer when the address is a
+   * **verified** email on the co-author's account. A configured email is
+   * therefore never trusted on its own: it is looked up in the account's
+   * verified email list. Anything unconfirmed is reported instead of used, so
+   * a run cannot quietly burn every action on credits GitHub will never grant.
    *
    * @param account - The account.
    * @param authenticated - The authenticated account.
    * @param notes - The notes.
-   * @returns The commit email.
+   * @returns The commit email and whether GitHub confirmed it.
    */
   private async resolveCommitEmail(
     account: Account,
     authenticated: AuthenticatedAccount,
     notes: string[],
-  ): Promise<string | null> {
-    if (account.commitEmail !== undefined && account.commitEmail !== "") return account.commitEmail;
-    try {
-      const emails = await authenticated.client.users.listEmails();
-      const verified = emails.filter((entry) => entry.verified);
-      const primary = verified.find((entry) => entry.primary) ?? verified[0];
-      if (primary !== undefined) return primary.email;
-      if (emails.length === 0) {
+  ): Promise<CommitEmailResolution> {
+    const configured = (account.commitEmail ?? "").trim();
+
+    if (!canReadEmails(authenticated.scopes)) {
+      if (configured !== "") {
         notes.push(
-          "Could not read account emails (the token likely lacks the `user:email` scope).",
+          `Cannot confirm that "${configured}" is a verified email on "${authenticated.login}" because the token lacks the \`user:email\` scope, so GitHub would not credit it as co-author. Re-authenticate with \`user:email\`.`,
         );
       }
+      return { email: configured === "" ? null : configured, verified: false };
+    }
+
+    let emails: GitHubEmail[];
+    try {
+      emails = await authenticated.client.users.listEmails();
     } catch (error) {
       notes.push(`Could not read account emails: ${redactSecrets(errorMessage(error))}`);
+      return { email: configured === "" ? null : configured, verified: false };
     }
-    return null;
+
+    const verified = emails.filter((entry) => entry.verified);
+
+    if (configured !== "") {
+      const match = verified.find((entry) => sameEmail(entry.email, configured));
+      if (match !== undefined) return { email: match.email, verified: true };
+      notes.push(
+        `"${configured}" is not a verified email address on "${authenticated.login}", so GitHub would not credit it as co-author. Add and verify it on the account, then run \`gh-forge accounts set-email ${account.id} <email>\`. Verified addresses on "${authenticated.login}": ${describeEmails(verified)}.`,
+      );
+      return { email: null, verified: false };
+    }
+
+    const primary = verified.find((entry) => entry.primary) ?? verified[0];
+    if (primary !== undefined) return { email: primary.email, verified: true };
+    notes.push(
+      `"${authenticated.login}" has no verified email addresses, so GitHub can never credit it as a co-author.`,
+    );
+    return { email: null, verified: false };
   }
 
   /**

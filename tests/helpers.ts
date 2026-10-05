@@ -304,6 +304,7 @@ export const emptyCapabilities: AccountCapabilities = {
   canComment: true,
   canCreateDiscussions: true,
   commitEmail: "octocat@example.com",
+  commitEmailVerified: true,
   canAttributeCoAuthoredCommit: true,
   rateLimitRemaining: 5000,
   rateLimitLimit: 5000,
@@ -342,6 +343,7 @@ export function makeContext(options: MakeContextOptions = {}): AchievementContex
           ...emptyCapabilities,
           login: account.username,
           commitEmail: `${account.username}@example.com`,
+          commitEmailVerified: true,
         } as AccountCapabilities,
       ]),
     );

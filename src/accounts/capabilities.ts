@@ -21,6 +21,7 @@ export interface AccountCapabilities {
   canComment: boolean;
   canStar: boolean;
   commitEmail: string | null;
+  commitEmailVerified: boolean;
   canAttributeCoAuthoredCommit: boolean;
   notes: string[];
 }
@@ -45,6 +46,7 @@ export function emptyCapabilities(): AccountCapabilities {
     canComment: false,
     canStar: false,
     commitEmail: null,
+    commitEmailVerified: false,
     canAttributeCoAuthoredCommit: false,
     notes: [],
   };
@@ -62,6 +64,12 @@ export function describeCapabilities(
   capabilities: AccountCapabilities,
 ): string[] {
   const tick = (value: boolean): string => (value ? "YES" : "NO");
+  const verification =
+    capabilities.commitEmail === null
+      ? ""
+      : capabilities.commitEmailVerified
+        ? " (verified)"
+        : " (NOT verified on GitHub)";
   const lines = [
     `Account: ${account.id} (${account.username})`,
     `  Role: ${account.role}`,
@@ -74,7 +82,7 @@ export function describeCapabilities(
     `  Can create discussions: ${tick(capabilities.canCreateDiscussions)}`,
     `  Can comment: ${tick(capabilities.canComment)}`,
     `  Can star repositories: ${tick(capabilities.canStar)}`,
-    `  Co-author email: ${capabilities.commitEmail ?? "(unknown)"}`,
+    `  Co-author email: ${capabilities.commitEmail ?? "(unknown)"}${verification}`,
     `  Can be credited in co-authored commits: ${tick(capabilities.canAttributeCoAuthoredCommit)}`,
   ];
   for (const note of capabilities.notes) {

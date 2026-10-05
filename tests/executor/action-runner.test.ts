@@ -8,6 +8,8 @@ import {
   type ActionRunInput,
 } from "../../src/executor/action-runner.js";
 import { makeContext, makeAccount, makeStubGitHub } from "../helpers.js";
+import { emptyCapabilities } from "../../src/accounts/capabilities.js";
+import type { AccountCapabilities } from "../../src/accounts/capabilities.js";
 import type { GitHubIssue, GitHubPullRequest } from "../../src/github/types.js";
 import type { PlannedAction } from "../../src/domain/action.js";
 
@@ -281,6 +283,59 @@ describe("runAction - co-authored merged PR", () => {
     const outcome = await runAction(input);
     expect(outcome.status).toBe("done");
     expect(stub.calls.prMerge).toBe(1);
+  });
+
+  it("refuses to write a trailer for a co-author email GitHub has not verified", async () => {
+    const stub = makeStubGitHub();
+    const helper = makeAccount({
+      id: "helper",
+      username: "octohelper",
+      role: "helper",
+      commitEmail: "helper@not-verified.test",
+    });
+    const context = makeContext({
+      accounts: [makeAccount({ id: "main", username: "octocat", role: "main" }), helper],
+      capabilities: new Map([
+        [
+          "main",
+          {
+            ...emptyCapabilities,
+            login: "octocat",
+            commitEmail: "octocat@example.com",
+            commitEmailVerified: true,
+          } as AccountCapabilities,
+        ],
+        [
+          "helper",
+          {
+            ...emptyCapabilities,
+            login: "octohelper",
+            commitEmail: "helper@not-verified.test",
+            commitEmailVerified: false,
+          } as AccountCapabilities,
+        ],
+      ]),
+      github: stub.client,
+    });
+    const action: PlannedAction = {
+      key: "pe-1",
+      kind: "co-authored-merged-pull-request",
+      achievementIds: ["pair-extraordinaire"],
+      description: "co-authored pr",
+      requiredAccounts: [],
+      params: {},
+      policyRisk: "safe",
+    };
+    const input: ActionRunInput = {
+      context,
+      action,
+      logger: silentLogger,
+      dryRun: false,
+      mergeMethod: "merge",
+      branchPrefix: "gh-forge",
+    };
+    await expect(runAction(input)).rejects.toThrow(/not a verified email on the/);
+    expect(stub.calls.prMerge).toBe(0);
   });
 });
 

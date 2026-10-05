@@ -71,7 +71,9 @@ export class PairExtraordinaireAchievement extends BaseAchievement {
       base.issues.push(`The helper account "${helper.id}" is not authenticated.`);
     } else if (capabilities !== undefined && !capabilities.canAttributeCoAuthoredCommit) {
       base.issues.push(
-        `GitHub Achievement Forge does not know a verified commit email for helper "${helper.id}", so GitHub would not credit it as co-author. Run \`gh-forge accounts set-email ${helper.id} <email>\`.`,
+        capabilities.commitEmail === null
+          ? `GitHub Achievement Forge does not know a verified commit email for helper "${helper.id}", so GitHub would not credit it as co-author. Run \`gh-forge accounts set-email ${helper.id} <email>\` with an address verified on the "${helper.username}" account.`
+          : `The commit email configured for helper "${helper.id}" (${capabilities.commitEmail}) is not verified on the "${helper.username}" account, so GitHub would not credit it as co-author and every action would be wasted. Verify an email address on that account, then run \`gh-forge accounts set-email ${helper.id} <email>\`.`,
       );
     }
     base.ok = base.issues.length === 0;

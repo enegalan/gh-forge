@@ -205,6 +205,17 @@ function buildCommitMessage(input: ActionRunInput, coAuthored: boolean, marker: 
       );
     }
     const capabilities = input.context.accountCapabilities.get(helper.id);
+    if (capabilities !== undefined && !capabilities.commitEmailVerified) {
+      throw new ExecutionError(
+        `The commit email for helper "${helper.id}" is not a verified email on the "${helper.username}" account, so GitHub would silently refuse to credit it as co-author and the action would be wasted.`,
+        [
+          `Add and verify an email address on the "${helper.username}" account, then run \`gh-forge accounts set-email ${helper.id} <email>\`.`,
+          capabilities.commitEmail === null
+            ? `Or remove the configured email so GitHub Achievement Forge picks a verified one automatically.`
+            : `Re-authenticate with the \`user:email\` scope so the address can be verified.`,
+        ],
+      );
+    }
     const email = capabilities?.commitEmail ?? helper.commitEmail;
     if (email === undefined || email === "") {
       throw new ExecutionError(
