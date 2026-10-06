@@ -120,4 +120,34 @@ describe("createPlan", () => {
     );
     expect(action?.policyRisk).toBe("safe");
   });
+
+  it("re-keys co-authored actions when the credited co-author changes", async () => {
+    const accounts = [
+      makeAccount(),
+      makeAccount({ id: "helper", username: "octohelper", role: "helper" }),
+    ];
+    const keysFor = async (helperEmail: string): Promise<string[]> => {
+      const plan = await planFor({
+        targets: { "pair-extraordinaire": 1 },
+        accounts: [
+          accounts[0] as ReturnType<typeof makeAccount>,
+          {
+            ...(accounts[1] as ReturnType<typeof makeAccount>),
+            commitEmail: helperEmail,
+          },
+        ],
+      });
+      return plan.actions.map((action) => action.key);
+    };
+
+    const first = await keysFor("helper@example.com");
+    const second = await keysFor("other@example.com");
+    const repeated = await keysFor("helper@example.com");
+
+    // A corrected co-author must not collide with the pull requests GitHub
+    // already declined to credit.
+    expect(second).not.toEqual(first);
+    // The same co-author still re-keys identically, so runs stay resumable.
+    expect(repeated).toEqual(first);
+  });
 });

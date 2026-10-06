@@ -89,6 +89,7 @@ export interface StubCalls {
   star: number;
   putFile: number;
   createBranch: number;
+  putFileMessages: string[];
 }
 
 /**
@@ -107,6 +108,7 @@ export function makeStubGitHub(options: StubOptions = {}): {
     star: 0,
     putFile: 0,
     createBranch: 0,
+    putFileMessages: [],
   };
 
   const userService = {
@@ -130,8 +132,9 @@ export function makeStubGitHub(options: StubOptions = {}): {
     },
     branchExists: async () => false,
     getFile: async () => null,
-    putFile: async () => {
+    putFile: async (input: { message: string }) => {
       calls.putFile += 1;
+      calls.putFileMessages.push(input.message);
       return {
         commitSha: "sha456",
         htmlUrl: "https://github.com/octocat/gh-forge-sandbox/blob/main/x.md",
@@ -342,7 +345,7 @@ export function makeContext(options: MakeContextOptions = {}): AchievementContex
         {
           ...emptyCapabilities,
           login: account.username,
-          commitEmail: `${account.username}@example.com`,
+          commitEmail: account.commitEmail ?? `${account.username}@example.com`,
           commitEmailVerified: true,
         } as AccountCapabilities,
       ]),

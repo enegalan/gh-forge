@@ -283,6 +283,10 @@ describe("runAction - co-authored merged PR", () => {
     const outcome = await runAction(input);
     expect(outcome.status).toBe("done");
     expect(stub.calls.prMerge).toBe(1);
+    const message = stub.calls.putFileMessages.at(-1);
+    expect(message).toBeDefined();
+    expect(message?.includes("Co-authored-by: octohelper <helper@example.com>")).toBe(true);
+    expect(message?.endsWith("Co-authored-by: octohelper <helper@example.com>")).toBe(true);
   });
 
   it("refuses to write a trailer for a co-author email GitHub has not verified", async () => {

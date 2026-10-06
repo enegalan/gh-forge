@@ -197,6 +197,12 @@ async function runCloseIssueFast(input: ActionRunInput): Promise<ActionOutcome> 
  */
 function buildCommitMessage(input: ActionRunInput, coAuthored: boolean, marker: string): string {
   const lines = [`gh-forge: ${input.action.description} [${input.action.key}]`];
+
+  // The marker comment must come BEFORE the trailer block. Git/GitHub only
+  // parse trailers in the last paragraph of a commit message, so placing the
+  // HTML marker after `Co-authored-by` silently voids the co-author credit.
+  lines.push("", markerHtml(marker));
+
   if (coAuthored) {
     const helper = input.context.accounts.filter((account) => account.role === "helper")[0];
     if (helper === undefined) {
@@ -227,7 +233,6 @@ function buildCommitMessage(input: ActionRunInput, coAuthored: boolean, marker: 
     }
     lines.push("", `Co-authored-by: ${helper.username} <${email}>`);
   }
-  lines.push("", markerHtml(marker));
   return lines.join("\n");
 }
 

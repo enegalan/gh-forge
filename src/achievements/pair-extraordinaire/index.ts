@@ -31,6 +31,25 @@ export class PairExtraordinaireAchievement extends BaseAchievement {
   override getRequirements(targetTier: number, context: AchievementContext): Requirement[] {
     const units = this.unitsFor(targetTier, this.currentLevel(context));
     if (units === 0) return [];
+
+    /**
+     * The credited co-author is part of the action's identity, not decoration.
+     * `actionKey` hashes these params, so a different co-author produces a
+     * different key, branch and marker. Without this, correcting the co-author
+     * email would re-key nothing and every action would be skipped as
+     * "already merged" against pull requests GitHub never credited.
+     *
+     * `commitMessageFormat` deliberately bumps the key when the commit message
+     * layout changes: v1 placed the marker after the `Co-authored-by` trailer,
+     * which made GitHub ignore the trailer, so v1 runs must not be resumed as
+     * if they had credited the co-author.
+     */
+    const helper = helpersOf(context)[0];
+    const helperEmail =
+      helper === undefined
+        ? null
+        : (context.accountCapabilities.get(helper.id)?.commitEmail ?? null);
+
     return [
       {
         id: "co-authored-merged-pr",
@@ -43,7 +62,11 @@ export class PairExtraordinaireAchievement extends BaseAchievement {
           { role: "helper", index: 0, purpose: "be credited as co-author of the commit" },
         ],
         policyRisk: "safe",
-        params: {},
+        params: {
+          coAuthor: helper?.username ?? null,
+          coAuthorEmail: helperEmail,
+          commitMessageFormat: "marker-before-trailer",
+        },
         description: "merge a pull request containing a co-authored commit",
       },
     ];
