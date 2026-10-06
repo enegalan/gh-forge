@@ -151,7 +151,62 @@ runs can be continued with `gh-forge run --resume`.
 - `config get/set <key>` — fine-tune defaults
   (e.g. `execution.minIntervalMs`, `execution.branchPrefix`).
 
-## Policy safety
+## Verifying Pair Extraordinaire co-authorship
+
+Pair Extraordinaire is credited only if GitHub recognizes the `Co-authored-by`
+trailer. Before running a plan that co-authors commits, verify the trail end to
+end so you don't waste a run on commits GitHub silently ignores.
+
+### 1. Check the helper account is ready
+
+```sh
+node dist/cli/index.js accounts test helper-1
+```
+
+Look for the co-author line in the output. It must read **verified**:
+
+```
+Co-author email: helper@example.com (verified)
+Can be credited in co-authored commits: YES
+```
+
+### 2. Grant the `user:email` scope to the helper's token
+
+Without it, gh-forge cannot confirm the configured email is verified and the
+plan stays blocked. `gh auth refresh` only targets the account currently
+selected in `gh`, so switch accounts around it (there is no `-u` flag):
+
+```sh
+gh auth switch -u <helper-login>
+gh auth refresh -h github.com -s user:email
+gh auth switch -u <your-main-login>
+```
+
+### 3. Verify the credit on a real commit
+
+GitHub only parses trailers in the **last paragraph** of a commit message:
+placing anything after `Co-authored-by:` (in particular gh-forge's
+`<!-- gh-forge:... -->` marker) silently voids the credit. gh-forge emits the
+marker **before** the trailer, so its commits are correct. To prove it on a
+commit you own, push a file with a message whose final line is the trailer:
+
+```sh
+# made deliberately simple: title, blank line, then the trailer as the LAST line
+git commit -m $'probe\n\nCo-authored-by: <helper-login> <helper-email>'
+git push origin <branch>
+```
+
+Then confirm the co-author is linked from the commit page (it renders the
+helper's profile link and avatar):
+
+```sh
+curl -s "https://github.com/<your-login>/<sandbox>/commit/<sha>" | grep -c 'href="/<helper-login>"'
+# expect >= 1
+```
+
+A count of 0 means GitHub ignored the trailer — fix the account (email not
+verified, or wrong case in the login) or trailing lines before relying on the
+achievement.
 
 Every action is tagged with a risk level:
 
